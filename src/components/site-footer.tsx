@@ -15,7 +15,7 @@ export function SiteFooter({ compact = false }: { compact?: boolean }) {
         </p>
         <div className="mt-5 flex flex-wrap items-end gap-3">
           <Link
-            href="/"
+            href="/signup"
             className="inline-flex h-[54px] items-center gap-2.5 bg-accent px-5 font-display text-base font-extrabold uppercase tracking-[0.01em] hover:bg-accent-hover"
           >
             Start your page <Icon name="arrow" />

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/brand";
-import { ClaimForm } from "@/components/home/claim-form";
 import { HeroPhone } from "@/components/home/hero-phone";
 import { Icon, type IconName } from "@/components/icons";
 import { ItemCard } from "@/components/item-card";
@@ -67,10 +66,9 @@ function HomeHeader() {
         </nav>
         <div className="flex items-center gap-1 md:gap-2">
           <Link href="/login" className="inline-flex h-10 items-center px-2 text-[14px] font-semibold whitespace-nowrap hover:underline md:px-3 md:text-[15px]">Sign in</Link>
-          <a href="#claim" className="inline-flex h-10 items-center bg-ink px-3 text-[13px] font-semibold whitespace-nowrap text-white hover:bg-ink-2 md:px-4 md:text-[14px]">
-            <span className="md:hidden">Start free</span>
-            <span className="hidden md:inline">Claim your page</span>
-          </a>
+          <Link href="/signup" className="inline-flex h-10 items-center bg-accent px-4 text-[14px] font-semibold whitespace-nowrap text-white hover:bg-accent-hover">
+            Sign up
+          </Link>
         </div>
       </div>
     </header>
@@ -98,8 +96,11 @@ function Hero() {
         <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-2 md:text-[19px]">
           The closest a fan can get is owning something that was yours. Put your things on one page and share it with the people who care most.
         </p>
-        <div className="mt-7 scroll-mt-24" id="claim">
-          <ClaimForm />
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <SignUpButton />
+          <Link href="/login" className="text-[15px] font-semibold underline underline-offset-4 hover:text-accent">
+            I already have a page
+          </Link>
         </div>
       </div>
       <HeroPhone />
@@ -278,11 +279,27 @@ function FinalCta() {
         <h2 className=" max-w-4xl font-display text-[48px] leading-[0.86] font-extrabold tracking-[-0.045em] uppercase md:text-[104px]">
           Your fans are already asking.
         </h2>
-        <ClaimForm dark />
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <SignUpButton />
+          <Link href="/login" className="text-[15px] font-semibold text-white underline underline-offset-4 hover:text-accent">
+            Sign in
+          </Link>
+        </div>
         <p className="text-[14px] text-[#9a9a9a]">
           Here for a creator? Tap the link in their bio to see their page.
         </p>
       </div>
     </section>
+  );
+}
+
+function SignUpButton() {
+  return (
+    <Link
+      href="/signup"
+      className="inline-flex h-[60px] items-center gap-3 bg-accent px-7 font-display text-xl font-extrabold text-white uppercase hover:bg-accent-hover"
+    >
+      Sign up, it&apos;s free <Icon name="arrow" />
+    </Link>
   );
 }

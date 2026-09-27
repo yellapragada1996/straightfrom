@@ -10,10 +10,13 @@ import { Underline } from "../scribbles";
 import { Btn, Field, inputCls } from "./ui";
 
 export const PENDING_EMAIL_KEY = "sf-pending-email";
-export const CLAIM_HANDLE_KEY = "sf-claim-handle";
 
-/** Magic-link sign in. One screen for both new and returning creators. */
-export function LoginForm() {
+/**
+ * Magic-link auth for creators. /signup and /login share this screen; both send
+ * the same email link (a new email creates the account, a known one signs in).
+ */
+export function LoginForm({ mode = "signin" }: { mode?: "signup" | "signin" }) {
+  const signup = mode === "signup";
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -46,18 +49,17 @@ export function LoginForm() {
         <div>
           <p className="inline-block -rotate-2 font-hand text-[28px] font-semibold text-accent">for creators</p>
           <h1 className="font-display text-[44px] leading-[0.86] font-extrabold tracking-[-0.045em] uppercase md:text-[72px]">
-            Let fans own a{" "}
-            <span className="relative inline-block">
-              piece
+            Your stuff has{" "}
+            <span className="relative inline-block text-accent">
+              fans.
               <Underline draw className="absolute -bottom-[0.1em] left-0 h-[0.16em] w-full [stroke-width:4]" />
-            </span>{" "}
-            of your story
+            </span>
           </h1>
           <ul className="mt-6 flex flex-col gap-2.5 text-[15px] text-ink-2">
             {[
               "Your own page, live in 2 minutes",
-              "List the things fans saw in your videos",
-              "You ship it, we handle payments",
+              "Share the things your fans would love to own",
+              "One link for your bio, stories and videos",
             ].map((t) => (
               <li key={t} className="flex items-center gap-2.5">
                 <Icon name="check" className="size-[18px] text-accent" /> {t}
@@ -69,8 +71,10 @@ export function LoginForm() {
         <div className="border-[1.5px] border-ink p-6 md:p-8">
           {!sent ? (
             <form onSubmit={submit} className="flex flex-col gap-4">
-              <h2 className="font-display text-2xl font-extrabold tracking-tight uppercase">Sign in or create your page</h2>
-              <p className="-mt-2 text-sm text-muted">No password. We&apos;ll email you a link.</p>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight uppercase">{signup ? "Create your page" : "Welcome back"}</h2>
+              <p className="-mt-2 text-sm text-muted">
+                {signup ? "Enter your email and we'll send you a link to get started. No password needed." : "Enter your email and we'll send you a sign-in link."}
+              </p>
               <Field label="Email" htmlFor="email">
                 <input
                   id="email"
@@ -85,11 +89,17 @@ export function LoginForm() {
                 />
               </Field>
               <Btn type="submit" size="lg" full disabled={!valid || busy} iconRight={busy ? undefined : "arrow"}>
-                {busy ? "Sending…" : "Email me a sign-in link"}
+                {busy ? "Sending…" : signup ? "Sign up with email" : "Email me a sign-in link"}
               </Btn>
               <p className="text-[12.5px] leading-relaxed text-muted">
                 You must be 18 or older to sell on StraightFrom. By continuing you agree to the{" "}
                 <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
+              </p>
+              <p className="border-t border-line pt-4 text-sm">
+                {signup ? "Already have a page? " : "New to StraightFrom? "}
+                <Link href={signup ? "/login" : "/signup"} className="font-semibold underline underline-offset-4">
+                  {signup ? "Sign in" : "Sign up"}
+                </Link>
               </p>
             </form>
           ) : (

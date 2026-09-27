@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { creatorActions, useCreatorState, type Profile } from "@/lib/creator-store";
-import { checkHandle } from "@/lib/handles";
 import { Icon } from "../icons";
 import { PagePreview } from "./page-preview";
 import { AvatarPicker } from "./photo-uploader";
 import { cleanSocialLinks, SocialLinksEditor } from "./social-links-editor";
-import { Btn, Card, Field, inputCls, PageTitle, useToast } from "./ui";
+import { Btn, Card, CopyButton, Field, inputCls, PageTitle, useToast } from "./ui";
 
 const BIO_MAX = 160;
 
@@ -28,13 +27,11 @@ function SettingsForm({ profile, bankConnected }: { profile: Profile; bankConnec
   const router = useRouter();
   const [f, setF] = useState<Profile>(profile);
   const [saved, setSaved] = useState<Profile>(profile);
-  const handleCheck = checkHandle(f.handle, saved.handle);
-  const handleChanged = f.handle !== saved.handle;
   const dirty = fingerprint(f) !== fingerprint(saved);
-  const canSave = dirty && f.displayName.trim().length > 0 && handleCheck.ok;
+  const canSave = dirty && f.displayName.trim().length > 0;
 
   function save() {
-    const next = { ...f, handle: f.handle.toLowerCase(), displayName: f.displayName.trim(), bio: f.bio.trim(), socialLinks: cleanSocialLinks(f.socialLinks) };
+    const next = { ...f, handle: saved.handle, displayName: f.displayName.trim(), bio: f.bio.trim(), socialLinks: cleanSocialLinks(f.socialLinks) };
     creatorActions.updateProfile(next);
     setF(next);
     setSaved(next);
@@ -59,27 +56,13 @@ function SettingsForm({ profile, bankConnected }: { profile: Profile; bankConnec
 
           <Card className="flex flex-col gap-4">
             <h2 className="-mb-1 font-display text-lg font-extrabold uppercase">Your link</h2>
-            <Field label="Handle" htmlFor="handle" error={!handleCheck.ok ? handleCheck.reason : null}>
-              <div className="flex items-stretch border-[1.5px] border-line bg-white focus-within:border-ink">
-                <span className="flex items-center pl-3.5 text-[16px] text-muted">straightfrom.co/</span>
-                <input
-                  id="handle"
-                  value={f.handle}
-                  onChange={(e) => setF({ ...f, handle: e.target.value.toLowerCase().replace(/\s/g, "") })}
-                  maxLength={30}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="h-12 min-w-0 flex-1 bg-transparent pr-3 text-[16px] font-semibold outline-none"
-                />
-              </div>
-            </Field>
-            {handleChanged && handleCheck.ok && (
-              <p className="flex gap-2.5 bg-[#fff4f3] px-3.5 py-3 text-[13px] leading-relaxed text-ink-2">
-                <Icon name="alert" className="mt-0.5 size-4 shrink-0 text-accent" />
-                Links with your old handle (straightfrom.co/{saved.handle}) will stop working. Update your bios after saving.
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1 truncate font-display text-xl font-extrabold tracking-tight">straightfrom.co/{saved.handle}</span>
+              <CopyButton text={`https://straightfrom.co/${saved.handle}`} label="Copy link" />
+            </div>
+            <p className="flex items-center gap-2 text-[13px] text-muted">
+              <Icon name="lock" className="size-4" /> Your link is permanent, so it keeps working everywhere you&apos;ve shared it.
+            </p>
           </Card>
 
           <Card className="flex flex-col gap-4">
