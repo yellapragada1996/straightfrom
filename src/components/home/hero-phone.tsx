@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { creatorEarns } from "@/lib/fees";
+import { creatorEarns, DEFAULT_FEE_BPS } from "@/lib/fees";
 import { money } from "@/lib/format";
 import { liveFeed } from "@/lib/live-feed";
 import { creators, products } from "@/lib/mock-data";
@@ -83,7 +83,7 @@ export function HeroPhone() {
             <span className="block text-[14px] leading-tight font-bold">You made a sale!</span>
             <span className="block truncate text-[12.5px] leading-snug text-ink-2">{piece.title}</span>
             <span className="block text-[12px] leading-snug text-muted">
-              Sold for {money(piece.priceCents)} · <b className="font-semibold text-accent">you earn {money(creatorEarns(piece.priceCents, piece.shippingCents))}</b>
+              Sold for {money(piece.priceCents)} · <b className="font-semibold text-accent">you earn {money(creatorEarns(piece.priceCents, piece.shippingCents, DEFAULT_FEE_BPS))}</b>
             </span>
           </span>
           <span className="relative size-10 shrink-0 overflow-hidden rounded-[9px] bg-tile">

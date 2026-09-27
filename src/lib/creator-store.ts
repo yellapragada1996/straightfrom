@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { platformFee, PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS } from "./fees";
+import { DEFAULT_FEE_BPS, feeFor, PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS } from "./fees";
 import { creators, products as allProducts } from "./mock-data";
 import type { SocialLinks } from "./social";
 import type { Product } from "./types";
@@ -75,7 +75,7 @@ function order(
 ): CreatorOrder {
   const p = allProducts.find((x) => x.id === productId)!;
   const itemCents = p.priceCents * quantity;
-  const feeCents = platformFee(itemCents);
+  const feeCents = feeFor(itemCents, DEFAULT_FEE_BPS);
   return {
     id,
     items: [{ productId, title: p.title, image: p.images[0], priceCents: p.priceCents, quantity }],
@@ -257,6 +257,10 @@ export const slugify = (s: string) =>
   s.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "piece";
 
 export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+/** The creator's id, used for their fee rate. Sample creators have real ids; new ones use their handle for now. */
+export const creatorIdFor = (profile: Profile | null) =>
+  profile ? (creators.find((c) => c.handle === profile.handle)?.id ?? `c_${profile.handle}`) : "";
 
 /** True when a creator is signed in (and has finished onboarding). */
 export const isCreatorSignedIn = (s: CreatorState) => !!s.signedIn && !!s.profile;

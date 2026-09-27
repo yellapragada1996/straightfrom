@@ -5,8 +5,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { creatorActions, newProductId, slugify, useCreatorState } from "@/lib/creator-store";
-import { creatorEarns, feePercent, platformFee } from "@/lib/fees";
+import { creatorActions, creatorIdFor, newProductId, slugify, useCreatorState } from "@/lib/creator-store";
+import { creatorEarns, feeFor, fmtFee } from "@/lib/fees";
+import { useFeeBps } from "@/lib/platform-store";
 import { firstSentence, money } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import { Icon } from "../icons";
@@ -31,10 +32,11 @@ export function ItemEditor({ id }: { id?: string }) {
     );
   }
   // key: reset the form if we navigate between items
-  return <EditorForm key={id ?? "new"} existing={existing} handle={s.profile?.handle ?? ""} />;
+  return <EditorForm key={id ?? "new"} existing={existing} handle={s.profile?.handle ?? ""} creatorId={creatorIdFor(s.profile)} />;
 }
 
-function EditorForm({ existing, handle }: { existing?: Product; handle: string }) {
+function EditorForm({ existing, handle, creatorId }: { existing?: Product; handle: string; creatorId: string }) {
+  const feeBps = useFeeBps(creatorId);
   const router = useRouter();
   const toast = useToast();
   const sold = existing?.status === "sold_out";
@@ -189,10 +191,10 @@ function EditorForm({ existing, handle }: { existing?: Product; handle: string }
 
           <Card className="p-4">
             <p className="text-xs font-bold tracking-[0.08em] text-muted uppercase">You&apos;ll earn</p>
-            <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight">{money(creatorEarns(priceC, shipC))}</p>
+            <p className="mt-1 font-display text-[34px] leading-none font-extrabold tracking-tight">{money(creatorEarns(priceC, shipC, feeBps))}</p>
             <dl className="mt-3 flex flex-col gap-1 text-[13px]">
               <div className="flex justify-between"><dt className="text-muted">Price</dt><dd className="tabular-nums">{money(priceC)}</dd></div>
-              <div className="flex justify-between"><dt className="text-muted">StraightFrom fee ({feePercent})</dt><dd className="tabular-nums">−{money(platformFee(priceC))}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted">StraightFrom fee ({fmtFee(feeBps)})</dt><dd className="tabular-nums">−{money(feeFor(priceC, feeBps))}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Shipping (all yours)</dt><dd className="tabular-nums">+{money(shipC)}</dd></div>
             </dl>
             <p className="mt-3 text-[12.5px] leading-snug text-muted">Paid to your bank 7 days after you add tracking.</p>

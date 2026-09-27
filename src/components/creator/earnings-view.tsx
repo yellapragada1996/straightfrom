@@ -4,9 +4,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { balances, creatorActions, fmtDate, payoutDue, payoutPending, useCreatorState, type CreatorOrder } from "@/lib/creator-store";
-import { feePercent } from "@/lib/fees";
+import { balances, creatorActions, creatorIdFor, fmtDate, payoutDue, payoutPending, useCreatorState, type CreatorOrder } from "@/lib/creator-store";
+import { fmtFee } from "@/lib/fees";
 import { money } from "@/lib/format";
+import { useFeeBps } from "@/lib/platform-store";
 import { Icon } from "../icons";
 import { Btn, Card, PageTitle, StatusPill, useToast } from "./ui";
 
@@ -18,6 +19,7 @@ export function EarningsView() {
   const toast = useToast();
   const [stripeOpen, setStripeOpen] = useState(false);
   const b = balances(s);
+  const feeBps = useFeeBps(creatorIdFor(s.profile));
   const connected = s.bank.connected;
 
   const earned = s.orders.filter((o) => o.status !== "refunded");
@@ -118,7 +120,12 @@ export function EarningsView() {
               <button type="button" onClick={() => toast("Opens your Stripe Express dashboard")} className="underline underline-offset-2 hover:text-ink">Manage</button>
             </p>
           ) : null}
-          <p>You&apos;re paid 7 days after you ship. StraightFrom keeps {feePercent} of the item price; the shipping you charge is all yours.</p>
+          <p>
+            You&apos;re paid 7 days after you ship.{" "}
+            {feeBps === 0
+              ? "You keep the full item price and all of the shipping."
+              : <>StraightFrom keeps {fmtFee(feeBps)} of the item price; the shipping you charge is all yours.</>}
+          </p>
         </div>
       </div>
 
