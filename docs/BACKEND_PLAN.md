@@ -43,8 +43,8 @@ We decided these while building the prototype. They override the spec.
 |---|---|---|
 | Buying | One item, straight to Stripe Checkout | **Cart**: several items from **one creator** per order. Shipping is charged once per order (the highest shipping of the items). |
 | Checkout page | Stripe-hosted Checkout | **Our own checkout page** (contact, address, payment), with Stripe's embedded **Payment Element** for the card. |
-| Fans | No fan accounts | **Guest checkout** (email required) plus an **optional fan account** by magic link, which shows every order ever placed with that email. |
-| Creator sign-in | Email magic link | Magic link **and Google**. |
+| Fans | No fan accounts | **Guest checkout** (email required) plus an **optional fan account** (Google, or email + password verified with a 6-digit code), which shows every order ever placed with that email. |
+| Creator sign-in | Email magic link | **Google, or email + password.** Signing up with email sends a **6-digit code** to verify the address. No magic links anywhere. Forgot password also uses a 6-digit code. |
 | Handles | Chosen at onboarding | Chosen at onboarding and **permanent**. Only admin can change one, for support cases. |
 | Admin | None (Supabase dashboard) | **Admin panel** with 4 sections: Home, Orders, Creators, Fees. One admin account. Hide and remove only. Full refunds only. |
 | Fee | 15% placeholder, env var | **4.9% platform fee, stored in the database and editable in admin.** Per-creator rates (e.g. 0%). Rates can be set **by email before sign-up**. Each order keeps the fee it was bought at. |
@@ -89,7 +89,7 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 | **160** bio length | `onboarding.tsx:20`, `settings-view.tsx:14` | `BIO_MAX` |
 | **1000** story length | `item-editor.tsx:18` | `STORY_MAX` |
 | **US and Canada** | `checkout-view.tsx:174`, `mock-data.ts` (`SHIPS_TO`) | `SHIP_COUNTRIES` (also restricts the address form and Stripe) |
-| **1 hour** magic link life | `login-form.tsx:118` | `MAGIC_LINK_TTL_MINUTES` (must match the Supabase setting) |
+| Code length, resend wait, password length | `config.ts` (already created) | `CODE_LENGTH = 6`, `RESEND_CODE_SECONDS = 30`, `MIN_PASSWORD_LENGTH = 8` (must match Supabase Auth settings) |
 | **18 or older** | `login-form.tsx:101`, `onboarding.tsx:153` | `MIN_CREATOR_AGE` |
 | **+3 / +7 days** admin extensions | `admin/orders.tsx:203-204` | `SHIP_EXTENSION_OPTIONS` |
 | Ship reminders day 3 and 5 | spec only | `SHIP_REMINDER_DAYS = [3, 5]` |
@@ -112,10 +112,10 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 | App | Next.js 16 (App Router), already set up | Writes are Server Functions (`'use server'`). Webhooks and cron are Route Handlers. `middleware.ts` is now called **`proxy.ts`** in Next 16. |
 | Database | Supabase Postgres | One project for production and one for staging/dev. |
 | ORM | Drizzle + `postgres` driver | Use Supabase's **transaction pooler** URL at runtime with `prepare: false`. Use the direct URL for migrations. |
-| Auth | Supabase Auth via `@supabase/ssr` | Email magic link + **6-digit code**, and Google OAuth. |
+| Auth | Supabase Auth via `@supabase/ssr` | Google OAuth, and **email + password** with a **6-digit code** to confirm the email and to reset a password. |
 | Files | Supabase Storage | One public bucket for photos. Uploads go through signed URLs. |
 | Payments | Stripe: Payment Element + Connect Express | Separate charges and transfers. |
-| Email | Resend + React Email | Also used as Supabase Auth's SMTP, so sign-in emails look like ours. |
+| Email | Resend + React Email | Also used as Supabase Auth's SMTP, so verification and reset codes come from our domain and look like ours. |
 | Jobs | Vercel Cron | One daily route that runs every job in order (§12). |
 | Validation | Zod | Every server action input. |
 | Errors | Sentry (free tier) | Recommended. Money code must never fail silently. |
@@ -178,7 +178,7 @@ src/
     api/stripe/webhook/route.ts
     api/stripe/connect-webhook/route.ts
     api/cron/daily/route.ts
-    auth/callback/route.ts  # OAuth + magic link return
+    auth/callback/route.ts  # Google OAuth return
     ...existing pages
 ```
 
@@ -388,21 +388,40 @@ Emails ("You made a sale: you'll earn $X", "Connect your bank: $X is waiting") u
 
 ### Sign-in methods
 
-- **Google**: Supabase OAuth, redirect back to `/auth/callback`.
-- **Email**: magic link **plus a 6-digit code in the same email.** Most fans and creators arrive from Instagram/TikTok in-app browsers. A magic link tapped in the Mail app opens Safari, not the in-app browser, so the session lands in the wrong browser. Typing the code keeps them where they are. This is a small change to the "Check your email" screen: add a code box.
-- The in-app-browser warning for Google (`google-button.tsx`) stays as is.
+Two ways in, for creators and fans alike:
+
+- **Google**: Supabase OAuth (`signInWithOAuth`), redirect back to `/auth/callback`. The in-app-browser warning (`google-button.tsx`) stays: Google blocks sign-in inside Instagram/TikTok's browser, so we point people to email there.
+- **Email + password**:
+  - **Sign up:** `supabase.auth.signUp({ email, password })` with "Confirm email" on. Supabase's *Confirm signup* email template shows the 6-digit code (`{{ .Token }}`) instead of a link. The person types it, `verifyOtp({ email, token, type: "email" })` confirms the address and signs them in.
+  - **Sign in:** `signInWithPassword({ email, password })`. An unconfirmed email gets a fresh code (`auth.resend({ type: "signup", email })`) and goes to the code screen.
+  - **Forgot password:** `resetPasswordForEmail(email)`, with the *Reset password* template showing the code. Then `verifyOtp({ email, token, type: "recovery" })` and `updateUser({ password })`, and they're signed in.
+
+Why codes and not links: most people arrive from Instagram/TikTok in-app browsers. A link tapped in the Mail app opens Safari, so the session lands in the wrong browser. Typing a code keeps them where they started. The UI is already built (`components/auth/email-password.tsx`).
+
+**Supabase Auth settings to set:**
+- Confirm email: on.
+- Email OTP length: `CODE_LENGTH` (6).
+- OTP expiry: 10 minutes.
+- Minimum password length: `MIN_PASSWORD_LENGTH` (8).
+- Leaked-password protection: on (Pro plan).
+- Custom SMTP through Resend (Supabase's built-in sender is rate-limited and not for production).
+- Automatic identity linking, so an email used with Google and with a password is **one** account.
+- If someone who only ever used Google tries a password, show "This email signs in with Google" (the error from `signInWithPassword` + an identities check).
 
 ### Creator sign-up flow
 
-1. `/signup` → Google or email → `/auth/callback`.
+1. `/signup` → Google, or email + password → 6-digit code → signed in.
 2. No `creators` row → `/onboarding`. There, one server action creates the row. It re-checks the handle (unique, reserved words) and **claims any pending fee rate for this email** (`pending_fee_rates` → `creators.fee_bps`), in one transaction.
 3. Has a row → `/dashboard`.
 
-`/login` does the same, and signing in with a new email simply leads to onboarding. Supabase's "email already registered" differences don't matter to us.
+`/login` is the same minus the code (unless the email was never confirmed). A signed-in person with no `creators` row always goes to onboarding.
 
 ### Fan account flow
 
-The "Save to your account" box on the confirmation page and `/account` send a magic link or code. Once signed in, `/account` lists orders by email. **Checkout never requires sign-in.**
+- **"Save it to your account"** on the confirmation page: email is pre-filled from the order, they pick a password, type the code, done.
+- **`/account`**: sign in (Google or email + password), or "Create an account" with the same code step.
+
+Once signed in, `/account` lists orders by the verified email, including ones from before the account existed. **Checkout never requires an account.**
 
 ---
 
@@ -569,7 +588,7 @@ Resend + React Email templates in `server/email/templates/`. Every value is a va
 | 11 | Creator | Fee change notice | admin changes platform fee (checkbox) | old and new rate, effective for new orders |
 | 12 | Creator | Payout failed | `payout.failed` | link to Stripe |
 | 13 | Admin | New report / chargeback | report created / dispute opened | link to admin Home |
-| — | Everyone | Sign-in link + code | Supabase Auth via Resend SMTP | branded template |
+| — | Everyone | Verify your email (6-digit code), Reset your password (6-digit code) | Supabase Auth via Resend SMTP | branded templates showing `{{ .Token }}` |
 
 Admin "Resend" re-sends #1 or #2 for that order.
 
@@ -597,9 +616,9 @@ Admin "Resend" re-sends #1 or #2 for that order.
 | `/[handle]/[slug]` | product + images + creator, "more from" | `submitReport()` (replaces mailto) | Buy box shows "Someone is paying for this" when all units are reserved. |
 | `/cart` | `getCheckoutLines(ids)` | none | Cart ids live in the browser. |
 | `/checkout` | `getCheckoutLines(ids)` | `startCheckout()` | §9 |
-| `/checkout/success` | `getOrderForConfirmation(code, paymentIntentSecret)` | `sendFanSignInLink()` | Replaces `last-order.ts` (sessionStorage). |
-| `/account` | fan's orders by email | `sendFanSignInLink()`, `signOut()` | |
-| `/login`, `/signup` | none | Supabase auth, `verifyEmailCode()` | Add the 6-digit code box. |
+| `/checkout/success` | `getOrderForConfirmation(code, paymentIntentSecret)` | sign up (email + password → code) | Replaces `last-order.ts` (sessionStorage). |
+| `/account` | fan's orders by email | sign in / sign up / forgot password, `signOut()` | |
+| `/login`, `/signup` | none | sign in / sign up / forgot password (Supabase Auth from the browser, §8) | UI already built. |
 | `/onboarding` | `checkHandle()` while typing | `completeOnboarding()` | Claims a pending fee rate. |
 | `/dashboard` | profile, `getCreatorBalances()`, orders to ship, live item count | `dismissBankCard()` | |
 | `/dashboard/items` | creator's products (all statuses) | `setProductStatus()`, `deleteDraft()` | |
@@ -657,7 +676,7 @@ The UI already shows success toasts. It just needs to also show `error` when `ok
 | `getCheckoutLines(ids)` | read-only; returns current price, shipping, units free, state `ok / sold / on_hold`, totals. Same shape as today's `buildCart()`. |
 | `startCheckout(input)` | §9. Rate-limited per IP. |
 | `submitReport(input)` | rate-limited; message length; creates `reports` row; email #13. |
-| `sendFanSignInLink(email)` / `verifyEmailCode()` | Supabase auth. |
+| Auth (sign up, verify code, resend code, sign in, forgot/reset password) | Called from the browser with the Supabase client, not our own actions. Supabase rate-limits them; we add per-IP limits for sign-up. |
 
 **Admin**: §17.
 
@@ -755,7 +774,7 @@ Each phase ends with a working, testable slice. We present a short plan before e
 - ✅ `npm run db:migrate && npm run db:seed` gives a database that looks like the prototype.
 
 **Phase 2: Auth and pages**
-- Supabase Auth (Google + magic link + code), `proxy.ts`, `/auth/callback`, onboarding with pending-fee claim, `requireCreator/requireAdmin`.
+- Supabase Auth (Google, email + password, 6-digit codes for sign-up and password reset), `proxy.ts`, `/auth/callback`, onboarding with pending-fee claim, `requireCreator/requireAdmin`.
 - Public creator and item pages and the dashboard read from the DB. Item CRUD with Storage uploads. Settings.
 - ✅ A new creator signs up on a phone, builds a page, publishes an item with photos, and a logged-out visitor sees it.
 
@@ -837,7 +856,7 @@ My recommendation is in the right-hand column. These are the "values" to settle 
 |---|---|
 | Cart: browser only, or also saved on the server? | **Browser only** for MVP. Server recomputes everything. Revisit if fans lose carts in in-app browsers. |
 | Address form: ours, or Stripe's Address Element? | **Keep ours** (already designed, matches the page). Add Google Places autocomplete later if typos cause returns. |
-| Sign-in email: link only, or link + 6-digit code? | **Link + code** (in-app browser problem, §8). |
+| Sign-in method | **Decided:** Google, or email + password with a 6-digit code to verify the email and to reset a password. |
 | Cron: daily (Vercel Hobby) or hourly (Pro)? | **Daily** to start; Pro when we need faster refunds or reminders. |
 | Supabase plan | Free for dev; **Pro for production** (backups, no pausing). |
 | Email provider | Resend (spec suggested it; confirm). Sending domain `mail.straightfrom.co`. |

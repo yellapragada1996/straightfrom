@@ -7,6 +7,7 @@ import { useHydrated } from "@/lib/cart";
 import { fmtDate } from "@/lib/creator-store";
 import { fanActions, ordersFor, useFanState, type FanOrder } from "@/lib/fan-store";
 import { money } from "@/lib/format";
+import { EmailPasswordAuth } from "../auth/email-password";
 import { GoogleButton, OrDivider } from "../google-button";
 import { Icon } from "../icons";
 import { RingAvatar } from "../ring-avatar";
@@ -21,79 +22,58 @@ export function FanAccount() {
   return s.signedInEmail ? <OrdersList email={s.signedInEmail} /> : <FanSignIn />;
 }
 
-/** Magic-link sign-in. Signing in the first time creates the account. */
-export function FanSignIn({ presetEmail = "", compact = false }: { presetEmail?: string; compact?: boolean }) {
-  const [email, setEmail] = useState(presetEmail);
-  const [sent, setSent] = useState(false);
-  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
-  if (sent) {
-    return (
-      <div className={`flex flex-col gap-3 ${compact ? "" : "mx-auto max-w-md px-4 py-16"}`}>
-        <span className="grid size-11 place-items-center rounded-full bg-ink text-white"><Icon name="mail" /></span>
-        <h2 className="font-display text-2xl font-extrabold uppercase">Check your email</h2>
-        <p className="text-[15px] text-ink-2">
-          We sent a sign-in link to <b className="text-ink">{email}</b>. Open it and every order you&apos;ve placed with this email will be waiting.
-        </p>
-        <div className="mt-1 flex flex-col gap-2 border border-dashed border-muted p-3">
-          <p className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">Prototype: pretend you clicked the link</p>
-          <Link
-            href="/account"
-            onClick={() => fanActions.signIn(email)}
-            className="grid h-11 place-items-center bg-ink text-sm font-semibold text-white hover:bg-ink-2"
-          >
-            Open the sign-in link
-          </Link>
-        </div>
-        <button type="button" onClick={() => setSent(false)} className="self-start text-sm underline underline-offset-4">Use a different email</button>
-      </div>
-    );
-  }
+/**
+ * Fan sign-in / sign-up: Google, or email + password (sign-up confirms the email with a 6-digit code).
+ * Orders are matched on the verified email, so orders placed before the account existed show up too.
+ */
+export function FanSignIn({
+  presetEmail = "",
+  compact = false,
+  defaultMode = "signin",
+}: {
+  presetEmail?: string;
+  compact?: boolean;
+  defaultMode?: "signin" | "signup";
+}) {
+  const [mode, setMode] = useState(defaultMode);
+  const signup = mode === "signup";
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (valid) setSent(true);
-      }}
-      className={`flex flex-col gap-4 ${compact ? "" : "mx-auto max-w-md px-4 py-12 md:py-20"}`}
-    >
-      {!compact && (
-        <div>
-          <p className="inline-block -rotate-2 font-hand text-[26px] font-semibold text-accent">your pieces</p>
-          <h1 className="font-display text-[44px] leading-[0.86] font-extrabold tracking-[-0.045em] uppercase">Your orders</h1>
-          <p className="mt-3 text-[15px] text-ink-2">
-            Sign in with the email you used at checkout. No password: we&apos;ll email you a link. First time? This creates your account, and all your past
-            orders show up.
+    <div className={compact ? "" : "mx-auto max-w-md px-4 py-12 md:py-20"}>
+      <EmailPasswordAuth
+        key={mode}
+        mode={mode}
+        presetEmail={presetEmail}
+        onDone={(email) => fanActions.signIn(email)}
+        submitLabel={compact && signup ? "Save to my account" : undefined}
+        prototypeNote={signup ? undefined : "Prototype: any password works. Try sam.fan@example.com to see orders placed before the account existed."}
+        intro={
+          !compact && (
+            <>
+              <div>
+                <p className="inline-block -rotate-2 font-hand text-[26px] font-semibold text-accent">your pieces</p>
+                <h1 className="font-display text-[44px] leading-[0.86] font-extrabold tracking-[-0.045em] uppercase">Your orders</h1>
+                <p className="mt-3 text-[15px] text-ink-2">
+                  {signup
+                    ? "Use the email you checked out with. Every order you've placed with it shows up, even ones from before you had an account."
+                    : "Sign in with the email you used at checkout."}
+                </p>
+              </div>
+              <GoogleButton onSuccess={() => fanActions.signIn("sam.fan@example.com")} />
+              <OrDivider />
+            </>
+          )
+        }
+        footer={
+          <p className="text-sm">
+            {signup ? "Already have an account? " : "New here? "}
+            <button type="button" onClick={() => setMode(signup ? "signin" : "signup")} className="font-semibold underline underline-offset-4">
+              {signup ? "Sign in" : "Create an account"}
+            </button>
           </p>
-        </div>
-      )}
-      {!compact && (
-        <>
-          <GoogleButton onSuccess={() => fanActions.signIn("sam.fan@example.com")} />
-          <OrDivider />
-        </>
-      )}
-      <label className="block">
-        <span className="mb-1.5 block text-[13px] font-semibold">Email</span>
-        <input
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          className="h-12 w-full border-[1.5px] border-line bg-white px-3.5 text-[16px] outline-none focus:border-ink"
-        />
-      </label>
-      <button type="submit" disabled={!valid} className="flex h-[52px] items-center justify-center gap-2 bg-accent font-semibold text-white hover:bg-accent-hover disabled:opacity-45">
-        Email me a sign-in link <Icon name="arrow" className="size-[18px]" />
-      </button>
-      {!compact && (
-        <p className="text-[13px] text-muted">
-          Tip: the demo checkout email is <b>sam.fan@example.com</b>. Sign in with it to see orders placed before the account existed.
-        </p>
-      )}
-    </form>
+        }
+      />
+    </div>
   );
 }
 

@@ -131,9 +131,9 @@ function SaveToAccount({ email }: { email: string }) {
       <p className="inline-block -rotate-2 font-hand text-2xl leading-none font-semibold text-accent">keep track</p>
       <h2 className="mt-1 font-display text-2xl leading-none font-extrabold uppercase">Save it to your account</h2>
       <p className="mt-2 mb-4 text-sm leading-relaxed text-ink-2">
-        Optional. See this order and every future one in one place, with tracking. No password: we&apos;ll email you a link.
+        Optional. Pick a password to see this order and every future one in one place, with tracking.
       </p>
-      <FanSignIn presetEmail={email} compact />
+      <FanSignIn presetEmail={email} compact defaultMode="signup" />
     </div>
   );
 }

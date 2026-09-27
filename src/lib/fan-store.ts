@@ -112,7 +112,7 @@ export const fanActions = {
   recordOrder(o: PlacedOrder) {
     set((s) => ({ ...s, orders: [{ ...o, placedAt: new Date().toISOString(), status: "paid" }, ...s.orders.filter((x) => x.id !== o.id)] }));
   },
-  /** Called after the fan clicks their magic link. */
+  /** Called once the fan has signed in (password, verified code, or Google). */
   signIn(email: string) {
     set((s) => ({ ...s, signedInEmail: email.trim().toLowerCase() }));
   },
