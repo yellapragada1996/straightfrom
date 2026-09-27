@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { creatorEarns } from "@/lib/fees";
 import { money } from "@/lib/format";
+import { liveFeed } from "@/lib/live-feed";
 import { creators, products } from "@/lib/mock-data";
 import { Wordmark } from "../brand";
 import { Icon } from "../icons";
@@ -27,7 +28,7 @@ const pieces = products
   .filter((p) => p.creatorId === creator.id && p.status !== "draft" && p.status !== "hidden")
   .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   .slice(0, 4);
-const available = products.filter((p) => p.creatorId === creator.id && p.status === "available").length;
+const feed = liveFeed(firstName, products.filter((p) => p.creatorId === creator.id));
 const piece = pieces[0];
 
 export function HeroPhone() {
@@ -115,7 +116,7 @@ export function HeroPhone() {
             <div className="mt-3 overflow-hidden bg-accent py-1.5 whitespace-nowrap text-white">
               <div className="inline-flex animate-ticker font-display text-[9px] font-extrabold tracking-wide uppercase">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <span key={i} className="px-2">{available} pieces available ✦ Every piece really {firstName}&apos;s ✦</span>
+                  <span key={i} className="px-2">{feed.join(" ✦ ")} ✦</span>
                 ))}
               </div>
             </div>

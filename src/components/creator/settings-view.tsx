@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { creatorActions, useCreatorState, type Profile } from "@/lib/creator-store";
+import { liveFeed } from "@/lib/live-feed";
 import { Icon } from "../icons";
 import { PagePreview } from "./page-preview";
 import { AvatarPicker } from "./photo-uploader";
@@ -19,10 +20,10 @@ const fingerprint = (p: Profile) =>
 export function SettingsView() {
   const s = useCreatorState();
   if (!s.profile) return null;
-  return <SettingsForm profile={s.profile} bankConnected={s.bank.connected} />;
+  return <SettingsForm profile={s.profile} bankConnected={s.bank.connected} feed={liveFeed(s.profile.displayName.split(" ")[0], s.products)} />;
 }
 
-function SettingsForm({ profile, bankConnected }: { profile: Profile; bankConnected: boolean }) {
+function SettingsForm({ profile, bankConnected, feed }: { profile: Profile; bankConnected: boolean; feed: string[] }) {
   const toast = useToast();
   const router = useRouter();
   const [f, setF] = useState<Profile>(profile);
@@ -95,7 +96,7 @@ function SettingsForm({ profile, bankConnected }: { profile: Profile; bankConnec
 
         <aside className="flex flex-col gap-3 lg:sticky lg:top-8">
           <p className="text-xs font-bold tracking-[0.08em] text-muted uppercase">Preview</p>
-          <PagePreview handle={f.handle} displayName={f.displayName} bio={f.bio} avatarUrl={f.avatarUrl} socialLinks={cleanSocialLinks(f.socialLinks)} />
+          <PagePreview handle={f.handle} displayName={f.displayName} bio={f.bio} avatarUrl={f.avatarUrl} socialLinks={cleanSocialLinks(f.socialLinks)} feed={feed} />
         </aside>
       </div>
 

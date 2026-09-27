@@ -10,6 +10,7 @@ import { Ticker } from "@/components/ticker";
 import { TopBar } from "@/components/top-bar";
 import { getCreator, getCreatorProducts } from "@/lib/data";
 import { firstName, isSold } from "@/lib/format";
+import { liveFeed } from "@/lib/live-feed";
 import { socialList } from "@/lib/social";
 
 export async function generateMetadata({ params }: PageProps<"/[handle]">): Promise<Metadata> {
@@ -87,15 +88,7 @@ export default async function CreatorPage({ params }: PageProps<"/[handle]">) {
           </div>
         </section>
 
-        <Ticker
-          label={`${available.length} available, ${sold.length} owned by fans`}
-          items={[
-            `${available.length} ${available.length === 1 ? "piece" : "pieces"} available`,
-            `${sold.length} now owned by fans`,
-            `Every piece really ${first}'s`,
-            `Shipped by ${first}, personally`,
-          ]}
-        />
+        <Ticker label={`What's happening on ${first}'s page`} items={liveFeed(first, products)} />
 
         <section className="mx-auto max-w-[1240px] px-4 pt-9 pb-10 md:px-10 md:pt-14 md:pb-16" aria-labelledby="pieces-h">
           <h2 id="pieces-h" className="mb-5 flex items-start gap-1 font-display text-[46px] leading-[0.86] font-extrabold tracking-[-0.045em] uppercase md:text-[80px]">

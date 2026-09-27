@@ -56,24 +56,16 @@ export function LoginForm({ mode = "signin" }: { mode?: "signup" | "signin" }) {
               <Underline draw className="absolute -bottom-[0.1em] left-0 h-[0.16em] w-full [stroke-width:4]" />
             </span>
           </h1>
-          <ul className="mt-6 flex flex-col gap-2.5 text-[15px] text-ink-2">
-            {[
-              "Your own page, live in 2 minutes",
-              "Share the things your fans would love to own",
-              "One link for your bio, stories and videos",
-            ].map((t) => (
-              <li key={t} className="flex items-center gap-2.5">
-                <Icon name="check" className="size-[18px] text-accent" /> {t}
-              </li>
-            ))}
-          </ul>
+          <p className="mt-6 max-w-[440px] text-[17px] leading-relaxed text-ink-2">
+            Add a few things you own, share one link, and your fans can buy them straight from you.
+          </p>
         </div>
 
         <div className="border-[1.5px] border-ink p-6 md:p-8">
           {!sent ? (
             <form onSubmit={submit} className="flex flex-col gap-4">
-              <h2 className="font-display text-2xl font-extrabold tracking-tight uppercase">{signup ? "Create your page" : "Welcome back"}</h2>
-              <p className="-mt-2 text-sm text-muted">{signup ? "It takes about 2 minutes. No password needed." : "Sign in with Google or your email."}</p>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight uppercase">{signup ? "Your fans are waiting" : "Welcome back"}</h2>
+              <p className="-mt-2 text-sm text-muted">{signup ? "Sign up, share your link, and let the people who follow you own something that was really yours." : "Sign in with Google or your email."}</p>
               <GoogleButton
                 onSuccess={() => {
                   // Prototype: signing up with Google starts onboarding; signing in opens Maya's sample dashboard.

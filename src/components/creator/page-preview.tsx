@@ -13,12 +13,15 @@ export function PagePreview({
   bio,
   avatarUrl,
   socialLinks,
+  feed,
 }: {
   handle: string;
   displayName: string;
   bio: string;
   avatarUrl: string;
   socialLinks: SocialLinks;
+  /** Live banner lines (from liveFeed); a placeholder is shown when empty. */
+  feed?: string[];
 }) {
   const [firstWord, ...rest] = (displayName || "Your name").split(" ");
   const socials = socialList(socialLinks);
@@ -59,7 +62,7 @@ export function PagePreview({
         )}
       </div>
       <div className="bg-accent py-1.5 text-center font-display text-[11px] font-extrabold tracking-wide text-white uppercase">
-        Every piece really {firstWord}&apos;s ✦ Shipped by {firstWord}, personally
+        {(feed?.length ? feed : [`Just listed: your first item`, `Fans own a piece of ${firstWord}`]).slice(0, 2).join(" ✦ ")}
       </div>
     </div>
   );
