@@ -36,15 +36,26 @@ export function EarningsView() {
       <PageTitle title="Earnings" />
 
       <div className="flex flex-col gap-5">
-        {/* Needs you: only when something does */}
-        {!connected && b.readyCents > 0 && (
-          <section className="flex flex-col gap-3 border-[1.5px] border-accent bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[15px]">
-              <b className="font-display text-xl font-extrabold">{money(b.readyCents)} is ready for you.</b>
-              <br />
-              <span className="text-ink-2">Connect your bank to receive it. It takes about 5 minutes with Stripe.</span>
+        {/* Bank not connected: the most important thing on this page */}
+        {!connected && (
+          <section className="border-[1.5px] border-accent bg-white p-5 md:p-6">
+            <p className="inline-block -rotate-2 font-hand text-[26px] leading-none font-semibold text-accent">
+              {/* Amounts in the display font: the handwriting font's "$" can read as a digit */}
+              {b.readyCents > 0 ? (
+                <><span className="font-display text-[22px] font-extrabold">{money(b.readyCents)}</span> is ready for you!</>
+              ) : comingCents > 0 ? (
+                <><span className="font-display text-[22px] font-extrabold">{money(comingCents)}</span> is coming your way!</>
+              ) : (
+                "one quick step"
+              )}
             </p>
-            <Btn size="lg" icon="bank" className="shrink-0 whitespace-nowrap" onClick={() => setStripeOpen(true)}>Connect your bank</Btn>
+            <h2 className="mt-1 font-display text-[30px] leading-[0.92] font-extrabold tracking-[-0.03em] uppercase md:text-[40px]">Connect your bank to get paid</h2>
+            <ul className="mt-4 flex flex-col gap-2 text-[15px] text-ink-2">
+              <li className="flex gap-2.5"><Icon name="clock" className="mt-0.5 size-[18px]" /> Takes about 5 minutes</li>
+              <li className="flex gap-2.5"><Icon name="lock" className="mt-0.5 size-[18px]" /> Handled by Stripe, who verify your identity. We never see your bank details.</li>
+              <li className="flex gap-2.5"><Icon name="bank" className="mt-0.5 size-[18px]" /> Everything you&apos;ve earned so far is paid out as soon as you&apos;re connected</li>
+            </ul>
+            <Btn size="lg" className="mt-5" icon="bank" onClick={() => setStripeOpen(true)}>Connect with Stripe</Btn>
           </section>
         )}
         {b.toShip.length > 0 && (
@@ -106,14 +117,7 @@ export function EarningsView() {
               <span className="flex items-center gap-1.5"><Icon name="check" className="size-4 text-[#1f7a3a]" /> Paid to your bank account ending {s.bank.last4} via Stripe</span>
               <button type="button" onClick={() => toast("Opens your Stripe Express dashboard")} className="underline underline-offset-2 hover:text-ink">Manage</button>
             </p>
-          ) : (
-            b.readyCents === 0 && (
-              <p>
-                Payouts go to your bank through Stripe.{" "}
-                <button type="button" onClick={() => setStripeOpen(true)} className="underline underline-offset-2 hover:text-ink">Connect your bank</button>
-              </p>
-            )
-          )}
+          ) : null}
           <p>You&apos;re paid 7 days after you ship. StraightFrom keeps {feePercent} of the item price; the shipping you charge is all yours.</p>
         </div>
       </div>
