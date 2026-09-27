@@ -21,9 +21,14 @@ const TIMELINE: [Phase, number][] = [
   ["sold", 3600],
 ];
 
-const maya = creators.find((c) => c.handle === "mayaokafor")!;
-const pieces = products.filter((p) => p.creatorId === maya.id && p.status === "available").slice(0, 4);
-const jacket = pieces[0];
+const creator = creators.find((c) => c.handle === "theoplays")!;
+const [firstName, ...restName] = creator.displayName.split(" ");
+const pieces = products
+  .filter((p) => p.creatorId === creator.id && p.status !== "draft" && p.status !== "hidden")
+  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  .slice(0, 4);
+const available = products.filter((p) => p.creatorId === creator.id && p.status === "available").length;
+const piece = pieces[0];
 
 export function HeroPhone() {
   const [phase, setPhase] = useState<Phase>("page");
@@ -47,11 +52,13 @@ export function HeroPhone() {
   return (
     <div className="relative mx-auto w-[288px] md:w-[320px]">
       {/* Handwritten note (desktop) */}
-      <span className="absolute top-[46%] -left-[150px] z-10 hidden -rotate-[8deg] items-start gap-1 font-hand text-[26px] leading-tight font-semibold text-accent lg:flex">
-        your page,
-        <br />
-        your story
-        <ArrowDownLeft className="relative mt-7 size-10 -scale-x-100 [stroke-width:2.2]" />
+      <span className="absolute top-[52%] -right-[150px] z-10 hidden rotate-[6deg] items-start gap-1 font-hand text-[26px] leading-tight font-semibold text-accent xl:flex">
+        <ArrowDownLeft className="relative mt-7 size-10 [stroke-width:2.2]" />
+        <span>
+          every piece
+          <br />
+          has a story
+        </span>
       </span>
 
       {/* "You made a sale" push notification, drops in when it sells */}
@@ -73,19 +80,19 @@ export function HeroPhone() {
               StraightFrom <span className="font-normal normal-case">now</span>
             </span>
             <span className="block text-[14px] leading-tight font-bold">You made a sale!</span>
-            <span className="block truncate text-[12.5px] leading-snug text-ink-2">{jacket.title}</span>
+            <span className="block truncate text-[12.5px] leading-snug text-ink-2">{piece.title}</span>
             <span className="block text-[12px] leading-snug text-muted">
-              Sold for {money(jacket.priceCents)} · <b className="font-semibold text-accent">you earn {money(creatorEarns(jacket.priceCents, jacket.shippingCents))}</b>
+              Sold for {money(piece.priceCents)} · <b className="font-semibold text-accent">you earn {money(creatorEarns(piece.priceCents, piece.shippingCents))}</b>
             </span>
           </span>
           <span className="relative size-10 shrink-0 overflow-hidden rounded-[9px] bg-tile">
-            <Image src={jacket.images[0]} alt="" fill sizes="40px" className="object-cover" />
+            <Image src={piece.images[0]} alt="" fill sizes="40px" className="object-cover" />
           </span>
         </div>
       </div>
 
       {/* Phone */}
-      <div className="rounded-[46px] bg-ink p-2.5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)]" role="img" aria-label="A fan opens Maya's page, taps the rain jacket, reads its story and buys it. Maya gets a sale notification.">
+      <div className="rounded-[46px] bg-ink p-2.5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)]" role="img" aria-label={`A fan opens ${firstName}'s page, taps a piece, reads its story and buys it. ${firstName} gets a sale notification.`}>
         <div className="relative aspect-[9/18.5] overflow-hidden rounded-[37px] bg-white">
           {/* Screen 1: creator page */}
           <div className={`absolute inset-0 transition-transform duration-500 ease-[cubic-bezier(0.3,0.7,0.2,1)] ${onItem ? "-translate-x-[30%]" : "translate-x-0"}`}>
@@ -93,22 +100,22 @@ export function HeroPhone() {
             <div className="relative px-4 pt-3">
               <p className="-rotate-2 font-hand text-[15px] leading-none font-semibold text-accent">straight from ↓</p>
               <p className="mt-1 font-display text-[46px] leading-[0.82] font-extrabold tracking-[-0.05em] uppercase md:text-[52px]">
-                <span className="block">Maya</span>
+                <span className="block">{firstName}</span>
                 <span className="relative inline-block">
-                  Okafor
+                  {restName.join(" ")}
                   <Underline draw className="absolute -bottom-[0.1em] left-0 h-[0.18em] w-full [stroke-width:3]" />
                 </span>
               </p>
               <span className="absolute top-3 right-4 block size-12 rounded-full bg-accent p-[2px]">
-                <Image src={maya.avatarUrl} alt="" width={96} height={96} className="size-full rounded-full border-2 border-white object-cover" />
+                <Image src={creator.avatarUrl} alt="" width={96} height={96} className="size-full rounded-full border-2 border-white object-cover" />
               </span>
-              <p className="mt-2.5 font-display text-[11px] font-extrabold">@{maya.handle}</p>
-              <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-ink-2">{maya.bio}</p>
+              <p className="mt-2.5 font-display text-[11px] font-extrabold">@{creator.handle}</p>
+              <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-ink-2">{creator.bio}</p>
             </div>
             <div className="mt-3 overflow-hidden bg-accent py-1.5 whitespace-nowrap text-white">
               <div className="inline-flex animate-ticker font-display text-[9px] font-extrabold tracking-wide uppercase">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <span key={i} className="px-2">5 pieces available ✦ Every piece really Maya&apos;s ✦</span>
+                  <span key={i} className="px-2">{available} pieces available ✦ Every piece really {firstName}&apos;s ✦</span>
                 ))}
               </div>
             </div>
@@ -118,8 +125,11 @@ export function HeroPhone() {
                 {pieces.map((p, i) => (
                   <div key={p.id} className="relative">
                     <div className="relative aspect-[4/5] overflow-hidden bg-tile">
-                      <Image src={p.images[0]} alt="" fill sizes="140px" className="object-cover" />
-                      <span className="absolute bottom-0 left-0 bg-ink px-1.5 pt-1 pb-0.5 font-display text-[10px] leading-none font-extrabold text-white">
+                      <Image src={p.images[0]} alt="" fill sizes="140px" className={`object-cover ${p.status === "sold_out" ? "opacity-40 grayscale" : ""}`} />
+                      {p.status === "sold_out" && (
+                        <span className="absolute top-1.5 left-1.5 -rotate-6 bg-white/95 px-1.5 font-hand text-[13px] leading-tight font-semibold text-accent">sold!</span>
+                      )}
+                      <span className={`absolute bottom-0 left-0 px-1.5 pt-1 pb-0.5 font-display text-[10px] leading-none font-extrabold ${p.status === "sold_out" ? "bg-white text-muted" : "bg-ink text-white"}`}>
                         {money(p.priceCents)}
                       </span>
                     </div>
@@ -141,14 +151,14 @@ export function HeroPhone() {
               <span className="flex items-center gap-1.5">
                 <Icon name="back" className="size-3.5" />
                 <span className="block size-5 rounded-full bg-accent p-[1.5px]">
-                  <Image src={maya.avatarUrl} alt="" width={40} height={40} className="size-full rounded-full border border-white object-cover" />
+                  <Image src={creator.avatarUrl} alt="" width={40} height={40} className="size-full rounded-full border border-white object-cover" />
                 </span>
-                <b className="font-display text-[11px] font-extrabold">@{maya.handle}</b>
+                <b className="font-display text-[11px] font-extrabold">@{creator.handle}</b>
               </span>
               <PhoneIcons />
             </div>
             <div className="relative aspect-square overflow-hidden bg-tile">
-              <Image src={jacket.images[0]} alt="" fill sizes="320px" className={`object-cover transition-all duration-500 ${sold ? "opacity-45 grayscale" : ""}`} />
+              <Image src={piece.images[0]} alt="" fill sizes="320px" className={`object-cover transition-all duration-500 ${sold ? "opacity-45 grayscale" : ""}`} />
               {sold && (
                 <span className="absolute bottom-3 left-3 z-[1] inline-block -rotate-[8deg] px-3 pt-0.5 pb-1.5 font-hand text-[26px] leading-none font-semibold text-accent">
                   <span className="absolute inset-0 rounded-[50%] bg-white/95" />
@@ -156,16 +166,16 @@ export function HeroPhone() {
                   <Circle draw className="absolute -inset-x-2 -inset-y-1 z-[1] h-[calc(100%+8px)] w-[calc(100%+16px)] [stroke-width:2.4]" />
                 </span>
               )}
-              <span className="absolute right-0 bottom-0 bg-ink px-2 pt-1 pb-0.5 font-display text-[10px] font-extrabold text-white">1/4</span>
+              {piece.images.length > 1 && <span className="absolute right-0 bottom-0 bg-ink px-2 pt-1 pb-0.5 font-display text-[10px] font-extrabold text-white">1/{piece.images.length}</span>}
             </div>
             <div className="flex flex-col gap-2 px-4 pt-3">
               <p className="text-[11px]">
                 <i className="font-serif text-[1.15em] text-accent">straight from </i>
-                <b className="font-display font-extrabold">@{maya.handle}</b>
+                <b className="font-display font-extrabold">@{creator.handle}</b>
               </p>
-              <p className="font-display text-[23px] leading-[0.9] font-extrabold tracking-[-0.04em] uppercase">{jacket.title}</p>
+              <p className="font-display text-[23px] leading-[0.9] font-extrabold tracking-[-0.04em] uppercase">{piece.title}</p>
               <div className="flex items-center gap-2.5">
-                <span className={`font-display text-[28px] leading-none font-extrabold tracking-[-0.04em] ${sold ? "text-muted" : ""}`}>{money(jacket.priceCents)}</span>
+                <span className={`font-display text-[28px] leading-none font-extrabold tracking-[-0.04em] ${sold ? "text-muted" : ""}`}>{money(piece.priceCents)}</span>
                 {!sold && (
                   <span className="relative -rotate-3 px-2 pb-0.5 font-hand text-[15px] leading-none font-semibold text-accent">
                     one of one
@@ -182,12 +192,12 @@ export function HeroPhone() {
                 ) : (
                   <div className={`flex h-10 items-center justify-between bg-accent px-3 font-display text-[13px] font-extrabold text-white uppercase transition-transform ${phase === "tapBuy" ? "scale-[0.97]" : ""}`}>
                     <span>Buy now</span>
-                    <span>{money(jacket.priceCents + jacket.shippingCents)}</span>
+                    <span>{money(piece.priceCents + piece.shippingCents)}</span>
                   </div>
                 )}
                 {phase === "tapBuy" && <Tap className="top-1/2 left-[45%]" />}
               </div>
-              <p className="line-clamp-3 font-serif text-[13px] leading-snug text-ink-2 italic">“{jacket.description}”</p>
+              <p className="line-clamp-3 font-serif text-[13px] leading-snug text-ink-2 italic">“{piece.description}”</p>
             </div>
           </div>
         </div>

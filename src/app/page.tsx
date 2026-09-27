@@ -13,17 +13,17 @@ import { money } from "@/lib/format";
 import { creators, products } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
-  title: { absolute: "StraightFrom · They watched it. Now they can own it." },
+  title: { absolute: "StraightFrom · Your stuff has fans." },
   description:
-    "Sell the things from your videos straight to the fans who watched. Your page is live in 2 minutes. Free to start, no bank details needed.",
+    "The mic, the camera, the props, the things fans spot in every video. Sell them straight to the people who watched. Free to start.",
   openGraph: {
-    title: "They watched it. Now they can own it.",
+    title: "Your stuff has fans.",
     description: "Creators sell their personal items straight to their fans. Free to start.",
   },
 };
 
 const handleOf = (creatorId: string) => creators.find((c) => c.id === creatorId)!.handle;
-const EXAMPLES = ["p_rain_jacket", "p_theo_headset", "p_qa_hoodie", "p_tokyo_polaroid"].map((id) => products.find((p) => p.id === id)!);
+const EXAMPLES = ["p_theo_headset", "p_tokyo_polaroid", "p_theo_mic", "p_rain_jacket"].map((id) => products.find((p) => p.id === id)!);
 
 const wrap = "mx-auto w-full max-w-[1240px] px-4 md:px-10";
 const h2 = "font-display text-[44px] leading-[0.86] font-extrabold tracking-[-0.045em] uppercase md:text-[84px]";
@@ -79,17 +79,18 @@ function Hero() {
           for creators
           <ArrowDown className="relative -mb-2.5 size-[30px] [stroke-width:2.2]" />
         </p>
-        <h1 className="mt-1 font-display text-[min(15vw,64px)] leading-[0.84] font-extrabold tracking-[-0.05em] uppercase md:text-[80px] lg:text-[clamp(64px,5.6vw,88px)]">
-          <span className="md:whitespace-nowrap">They watched it.</span>
-          <br />
-          Now they can <br className="hidden md:block" />
-          <span className="relative inline-block text-accent">
-            own it.
-            <Underline draw className="absolute -bottom-[0.08em] left-0 h-[0.16em] w-full [stroke-width:4] md:[stroke-width:6]" />
+        <h1 className="mt-1 font-display text-[min(15.5vw,96px)] leading-[0.82] font-extrabold tracking-[-0.05em] uppercase md:text-[120px] lg:text-[clamp(84px,7.4vw,120px)]">
+          <span className="block whitespace-nowrap">Your stuff</span>
+          <span className="block whitespace-nowrap">
+            has{" "}
+            <span className="relative inline-block text-accent">
+              fans.
+              <Underline draw className="absolute -bottom-[0.06em] left-0 h-[0.14em] w-full [stroke-width:4] md:[stroke-width:6]" />
+            </span>
           </span>
         </h1>
-        <p className="mt-6 max-w-[540px] text-[17px] leading-relaxed text-ink-2 md:text-[19px]">
-          Sell the things from your videos (the jacket, the mic, the hoodie from every Q&amp;A) straight to the fans who watched. Your page is live in 2 minutes.
+        <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-2 md:text-[19px]">
+          The mic, the camera, the props, the things fans spot in every video. Sell them straight to the people who watched. Your page is live in 2 minutes.
         </p>
         <div className="mt-7 scroll-mt-24" id="claim">
           <ClaimForm />
@@ -142,7 +143,7 @@ function RealThing() {
       </div>
 
       <p className="mt-14 max-w-[640px] font-serif text-[26px] leading-snug italic text-ink-2 md:text-[32px]">
-        The jacket from the Japan vlog. The headset from a thousand streams. Fans don&apos;t want another hoodie with your name on it. They want the one you actually wore.
+        The headset from a thousand streams. The camera behind the travel films. The prop from that one sketch. Fans don&apos;t want another thing with your name printed on it. They want the real one.
       </p>
 
       <div className="mt-10 grid grid-cols-2 gap-x-2.5 gap-y-8 md:grid-cols-4 md:gap-x-5">
@@ -316,7 +317,7 @@ function Fees() {
 
 
 const FAQ: { q: string; a: string }[] = [
-  { q: "What can I sell?", a: "Things you've personally owned or used: clothes you wore in videos, gear from your streams, props, signed bits. If fans would recognise it, even better. No mass-produced merch or new stock." },
+  { q: "What can I sell?", a: "Things you've personally owned or used: your gear, cameras and mics, props, things from your desk or set, clothes from your videos, signed bits. If fans would recognise it, even better. No mass-produced merch or new stock." },
   { q: "Is this a merch platform?", a: "No. Merch is made for fans. StraightFrom is for things that were really yours, usually one of one, with the story of where they've been." },
   { q: "Do I need a bank account to start?", a: "No. Create your page and list pieces first. We'll ask you to connect your bank (through Stripe, about 5 minutes) after your first sale. Your money waits safely until then." },
   { q: "Who ships the items?", a: "You do, however you like. When something sells you get an email with the fan's address. Ship it and add the tracking number; the fan is emailed straight away." },
