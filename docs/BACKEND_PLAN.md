@@ -92,7 +92,7 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 | Code length, resend wait, password length | `config.ts` (already created) | `CODE_LENGTH = 6`, `RESEND_CODE_SECONDS = 30`, `MIN_PASSWORD_LENGTH = 8` (must match Supabase Auth settings) |
 | **18 or older** | `login-form.tsx:101`, `onboarding.tsx:153` | `MIN_CREATOR_AGE` |
 | **+3 / +7 days** admin extensions | `admin/orders.tsx:203-204` | `SHIP_EXTENSION_OPTIONS` |
-| Ship reminders day 3 and 5 | spec only | `SHIP_REMINDER_DAYS = [3, 5]` |
+| One ship reminder, 2 days before the deadline | spec had day 3 and 5 | `SHIP_REMINDER_DAYS_BEFORE = 2` |
 | **"ending 4821"** bank | `creator-store.ts:221` (fake) | Real last 4 from Stripe (`creators.bank_last4`) |
 | `hello@straightfrom.co` | `app/page.tsx:252` | `SUPPORT_EMAIL` |
 | `admin@straightfrom.co` | `admin-shell.tsx:69,143` | `ADMIN_EMAIL` env var (secret list, never shown to visitors) |
@@ -173,7 +173,7 @@ src/
       send.ts               # sendEmail(template, to, data), writes email_log
       templates/*.tsx       # React Email templates (§13)
     jobs/
-      payouts.ts  autoRefunds.ts  shipReminders.ts  bankReminders.ts  cleanupPending.ts
+      payouts.ts  autoRefunds.ts  shipReminder.ts  cleanupPending.ts
   app/
     api/stripe/webhook/route.ts
     api/stripe/connect-webhook/route.ts
@@ -279,7 +279,7 @@ report_target:   item | creator
 | dispute_reason | text null | |
 | refund_reason | text null | |
 | paid_at, shipped_at, paid_out_at, refunded_at, canceled_at | timestamptz null | |
-| last_reminder_day | int null | ship reminders sent (3, 5), so re-runs don't repeat |
+| ship_reminder_sent_at | timestamptz null | the one ship reminder (E8), so re-runs don't send it twice |
 
 **`order_items`**: id, order_id, product_id, `title` (snapshot), `image_path` (snapshot), `price_cents` (snapshot), `quantity`.
 
@@ -368,7 +368,7 @@ It returns the **same field names the prototype's `balances()` uses today**, so 
 | `paidOutCents` | sent to their bank | Dashboard and Earnings "Paid out" |
 | `totalEarnedCents` | everything except refunds | Earnings "Total earned" |
 
-Emails ("You made a sale: you'll earn $X", "Connect your bank: $X is waiting") use the same function or the order's own `payout_cents`.
+Emails ("Someone ordered: you'll earn $X") use the order's own `payout_cents`, and any balance they mention comes from the same function.
 
 **Rounding:** fee uses standard rounding of integer cents, done once per order (not per item), so totals always add up exactly.
 
@@ -447,7 +447,7 @@ Fan presses "Pay $X"
    │        - insert order (status = pending, code SF-XXXXX) + order_items
    │        - insert reservations (expires in RESERVATION_MINUTES)
    │       then create the PaymentIntent:
-   │        amount = total, currency = usd, receipt_email = fan email,
+   │        amount = total, currency = usd, (no receipt_email: our E3 replaces Stripe's receipt),
    │        shipping = name + address, transfer_group = order.id,
    │        metadata = { order_id }, automatic_payment_methods on,
    │        idempotency key = order.id
@@ -501,7 +501,7 @@ stripe.transfers.create({
 }, { idempotencyKey: `payout-${order.id}` })
 ```
 
-Then the job sets the order to `paid_out` (with `paid_out_at` and `stripe_transfer_id`), writes an order event, and emails the creator.
+Then the job sets the order to `paid_out` (with `paid_out_at` and `stripe_transfer_id`) and writes an order event. No email in the MVP: the creator sees it on Earnings.
 
 `source_transaction` ties the transfer to that fan's charge, so we never pay out money we haven't received.
 
@@ -511,7 +511,7 @@ Then the job sets the order to `paid_out` (with `paid_out_at` and `stripe_transf
 
 - **Admin refund** or **auto-refund** → `stripe.refunds.create({ payment_intent, idempotencyKey: refund-${id} })`.
 - If the order was already `paid_out`, first `transfers.createReversal(transfer_id)` to take the creator's share back (the admin dialog already says this).
-- Then: order → `refunded`, put the item quantities back, move the product to **draft** (the creator decides whether to relist; matches "You can list the item again from Items"), write an event, and email the fan and the creator.
+- Then: order → `refunded`, put the item quantities back, move the product to **draft** (the creator decides whether to relist; matches "You can list the item again from Items"), write an event, and send E6 to the fan and E7 to the creator.
 - Stripe doesn't return its fee on refunds. This shows up in "We keep".
 
 ### Chargebacks (disputes)
@@ -547,7 +547,7 @@ Two endpoints, both verify the Stripe signature. Each first inserts the event id
 | Event | What we do |
 |---|---|
 | `account.updated` | Update `payouts_enabled` and `bank_last4`. If payouts just turned on, run payouts for that creator. |
-| `payout.failed` | Email the creator ("Your bank rejected a payout, check your details in Stripe"). Show it on admin Home. |
+| `payout.failed` | Show it on admin Home; admin contacts the creator by hand (automatic email is on the *later* list, §13). |
 
 Pages that show products or orders are rendered fresh on each request (§18). A webhook doesn't need to clear any cache.
 
@@ -559,11 +559,10 @@ One Vercel Cron entry calls `/api/cron/daily` (protected by `Authorization: Bear
 
 | Job | Finds | Does |
 |---|---|---|
-| 1. `autoRefunds` | `paid` orders where `paid_at + SHIP_DEADLINE_DAYS + ship_extra_days < now` | Full refund (§10), item back to draft, email fan and creator. |
-| 2. `payouts` | §10 | Transfer, `paid_out`, email creator. |
-| 3. `shipReminders` | `paid` orders at day 3 and day 5 (`last_reminder_day` prevents repeats) | "Ship Priya's polaroid by Oct 2." |
-| 4. `bankReminders` | creators with `readyCents > 0` and no payouts, at most every 3 days, max 5 times | "$77.06 is waiting: connect your bank." |
-| 5. `cleanupPending` | `pending` orders older than the hold | Cancel the PaymentIntent, order → `canceled`, delete expired reservations. |
+| 1. `autoRefunds` | `paid` orders where `paid_at + SHIP_DEADLINE_DAYS + ship_extra_days < now` | Full refund (§10), item back to draft, E6 to the fan, E7 to the creator. |
+| 2. `payouts` | §10 | Transfer, `paid_out`. |
+| 3. `shipReminder` | `paid` orders whose ship-by date is `SHIP_REMINDER_DAYS_BEFORE` days away and `ship_reminder_sent_at` is empty | E8: "Ship Priya's polaroid by Oct 2." |
+| 4. `cleanupPending` | `pending` orders older than the hold | Cancel the PaymentIntent, order → `canceled`, delete expired reservations. |
 
 **Daily or hourly?** Vercel's Hobby plan only allows daily crons. Daily is enough for payouts (they're measured in days). Auto-refunds may happen up to a day late, which only favours the creator. **DECIDE** in §22.
 
@@ -571,26 +570,34 @@ One Vercel Cron entry calls `/api/cron/daily` (protected by `Authorization: Bear
 
 ## 13. Emails
 
-Resend + React Email templates in `server/email/templates/`. Every value is a variable from the database. `sendEmail()` writes an `email_log` row. Sending happens after the response (`after()`) so pages stay fast. A failed send never undoes a payment.
+**Decided for the MVP: 8 emails.** Everything in them is a variable from the database; nothing is typed in.
 
-| # | To | Email | Trigger | Data used |
+Two come from Supabase Auth, using its templates sent through Resend. Six are ours: React Email templates in `server/email/templates/`, sent with `sendEmail()`. That function writes an `email_log` row and runs after the response (`after()`), so pages stay fast. A failed email never undoes a payment or a refund.
+
+| # | To | Email | Sent when | What's in it |
 |---|---|---|---|---|
-| 1 | Fan | Order confirmation | payment succeeded | code, items, totals, creator, ship-to, "ships within `SHIP_DEADLINE_DAYS` days", link to create an account |
-| 2 | Fan | Your item shipped | tracking added | carrier, tracking link (`CARRIERS[].track`), creator |
-| 3 | Fan | Tracking updated | tracking changed by creator or admin | new link |
-| 4 | Fan | Refunded | any refund | amount, reason, "back on your card in 5–10 days" |
-| 5 | Creator | You made a sale | payment succeeded | items, **you'll earn `payout_cents`**, ship-to address, ship-by date, "connect your bank" block if not connected |
-| 6 | Creator | Ship reminder (day 3, 5) | job | order, ship-by date |
-| 7 | Creator | Order refunded (not shipped in time) | auto-refund | item, "list it again from Items" |
-| 8 | Creator | Payout sent | payout job | amount, order, bank ending |
-| 9 | Creator | Connect your bank | job | `readyCents` |
-| 10 | Creator | Ship-by date extended | admin +3/+7 | new date |
-| 11 | Creator | Fee change notice | admin changes platform fee (checkbox) | old and new rate, effective for new orders |
-| 12 | Creator | Payout failed | `payout.failed` | link to Stripe |
-| 13 | Admin | New report / chargeback | report created / dispute opened | link to admin Home |
-| — | Everyone | Verify your email (6-digit code), Reset your password (6-digit code) | Supabase Auth via Resend SMTP | branded templates showing `{{ .Token }}` |
+| E1 | Creator or fan | **Your sign-up code** | they sign up with email + password (and "Resend code") | 6-digit code (`{{ .Token }}`), expires in 10 minutes. Supabase *Confirm signup* template. |
+| E2 | Creator or fan | **Your password reset code** | "Forgot password?" | 6-digit code. Supabase *Reset password* template. |
+| E3 | Fan | **Order confirmed** | payment succeeds (webhook) | order code, items with photos, subtotal/shipping/total, "straight from @handle", ship-to address, "ships within `SHIP_DEADLINE_DAYS` days or you're refunded automatically", link to create an account (pre-filled email) |
+| E4 | Creator | **Someone ordered** | payment succeeds (webhook) | items, **you'll earn `payout_cents`**, fan's name and ship-to address, ship-by date, "Add tracking" button → `/dashboard/orders`. If no bank connected: a "Connect your bank to get paid" block (this replaces separate bank reminders). |
+| E5 | Fan | **Your item shipped** | creator (or admin) adds tracking | carrier, tracking number, **Track package** link (`CARRIERS[].track`; "Other" shows the number only), creator. Sent again if the tracking is changed later. |
+| E6 | Fan | **You've been refunded** | any refund (auto, admin, or the sold-while-paying edge case) | amount, reason in plain words, "back on your card in 5–10 business days" |
+| E7 | Creator | **Order refunded** | auto-refund (not shipped in time) or admin refund | item, amount, reason, "the item is back in your drafts; list it again anytime" |
+| E8 | Creator | **Ship reminder** | daily job, `SHIP_REMINDER_DAYS_BEFORE` (2) days before the ship-by date, once per order | item, fan's first name, ship-by date, "Add tracking" button, "after that the fan is refunded automatically" |
 
-Admin "Resend" re-sends #1 or #2 for that order.
+**Admin "Resend"** on an order re-sends E5 if it has tracking, otherwise E3.
+
+**Turn off Stripe's receipt emails.** Don't set `receipt_email` on the PaymentIntent, and switch off "Successful payments" emails in Stripe settings. E3 is the receipt, so fans don't get two.
+
+**Later (not in the MVP)**, each easy to add because `sendEmail()` and the data already exist:
+- creator welcome / "your page is live"
+- payout sent (Earnings shows it)
+- bank reminders when money is ready (the E4 block covers the key moment)
+- separate "tracking updated" (E5 is re-sent instead)
+- ship-by date extended
+- fee change notice (see `setPlatformFee`, §17)
+- payout failed
+- admin alerts for new reports (admin Home shows them; Stripe already emails you about chargebacks)
 
 ---
 
@@ -664,8 +671,8 @@ The UI already shows success toasts. It just needs to also show `error` when `ok
 | `saveProduct(input, status)` | owns it; not sold out; publishing needs ≥1 photo, title, price ≥ `MIN_PRICE_CENTS`, shipping ≥ 0; story ≤ `STORY_MAX`; quantity ≥ 1; slug made unique on create only; sets `published_at` on first publish. |
 | `setProductStatus(id, draft/available)` | owns it; can't publish a hidden-by-admin item (admin hides → status `hidden`; creator can't flip it back). |
 | `deleteDraft(id)` | draft only and never ordered. |
-| `markShipped(orderId, carrier, tracking)` | owns the order; status `paid`; tracking ≥ 4 chars. Sets `shipped_at`, email #2. |
-| `updateTracking(orderId, …)` | status `shipped`/`paid_out`. Email #3. |
+| `markShipped(orderId, carrier, tracking)` | owns the order; status `paid`; tracking ≥ 4 chars. Sets `shipped_at`, sends E5. |
+| `updateTracking(orderId, …)` | status `shipped`/`paid_out`. Re-sends E5 with the new link. |
 | `startConnectOnboarding()` / `openStripeDashboard()` | §10 |
 | `dismissBankCard()` | sets `bank_card_dismissed_at` |
 
@@ -675,7 +682,7 @@ The UI already shows success toasts. It just needs to also show `error` when `ok
 |---|---|
 | `getCheckoutLines(ids)` | read-only; returns current price, shipping, units free, state `ok / sold / on_hold`, totals. Same shape as today's `buildCart()`. |
 | `startCheckout(input)` | §9. Rate-limited per IP. |
-| `submitReport(input)` | rate-limited; message length; creates `reports` row; email #13. |
+| `submitReport(input)` | rate-limited; message length; creates `reports` row (shows on admin Home; no email). |
 | Auth (sign up, verify code, resend code, sign in, forgot/reset password) | Called from the browser with the Supabase client, not our own actions. Supabase rate-limits them; we add per-IP limits for sign-up. |
 
 **Admin**: §17.
@@ -688,10 +695,10 @@ Every admin query and action starts with `requireAdmin()`. Every admin action wr
 
 | Admin action | Effect |
 |---|---|
-| `adminRefund(code, reason)` | §10 refund flow, emails #4 and #7 |
-| `extendShipBy(code, days)` | `ship_extra_days += days`, event, email #10 |
+| `adminRefund(code, reason)` | §10 refund flow, E6 and E7 |
+| `extendShipBy(code, days)` | `ship_extra_days += days`, event. No email in the MVP (admin tells the creator). |
 | `adminSetTracking(code, carrier, number)` | as creator's `markShipped`/`updateTracking` |
-| `resendEmail(code)` | email #2 if tracking exists, else #1 |
+| `resendEmail(code)` | E5 if tracking exists, else E3 |
 | `setCreatorStatus(id, hidden/active, reason)` | hiding hides the page and all items from fans; open orders still shippable |
 | `removeBio(id)` / `removeAvatar(id)` | clears field / deletes file |
 | `changeHandle(id, newHandle, reason)` | same handle rules; old link 404s |
@@ -699,7 +706,7 @@ Every admin query and action starts with `requireAdmin()`. Every admin action wr
 | `setItemStatus(productId, hidden/available)` | admin hide/unhide |
 | `removePhoto(productId, imageId)` | delete image; live item with none left → draft |
 | `resolveReport(id, hide/no_action)` | closes report; optionally hides item/page in the same transaction |
-| `setPlatformFee(bps, notify)` | updates `platform_settings`; optional email #11 to creators on the platform rate |
+| `setPlatformFee(bps)` | updates `platform_settings`. The fee-change email is on the *later* list, so the prototype's "Email those creators" checkbox is dropped for now; admin tells creators by hand. |
 | `setCreatorFee(id, bps, note)` / `clearCreatorFee(id)` | `creators.fee_bps` |
 | `setPendingFee(email, bps, note)` / `clearPendingFee(email)` | `pending_fee_rates` |
 
@@ -779,21 +786,21 @@ Each phase ends with a working, testable slice. We present a short plan before e
 - ✅ A new creator signs up on a phone, builds a page, publishes an item with photos, and a logged-out visitor sees it.
 
 **Phase 3: Checkout**
-- `getCheckoutLines`, `startCheckout` with reservations, Payment Element, webhook (`payment_intent.succeeded`), success page from DB, emails #1 and #5, fan account order history.
+- `getCheckoutLines`, `startCheckout` with reservations, Payment Element, webhook (`payment_intent.succeeded`), success page from DB, E3 and E4, fan account order history. (E1 and E2 come with Phase 2's auth.)
 - ✅ Test-mode purchase end to end (card, Apple Pay). Two people can't buy the last unit. A declined card leaves the item held, then free after the hold. A duplicate webhook changes nothing.
 
 **Phase 4: Shipping, Connect and money**
-- Mark shipped / edit tracking (emails #2 and #3).
+- Mark shipped / edit tracking (E5).
 - Express onboarding, `account.updated`, `getCreatorBalances` on Dashboard and Earnings.
-- Daily cron: payouts, auto-refunds, reminders, cleanup. Refund flow with transfer reversal. Emails #4 and #6–9.
+- Daily cron: payouts, auto-refunds, reminders, cleanup. Refund flow with transfer reversal. E6, E7 and E8.
 - ✅ In test mode, with Stripe test clocks or by back-dating rows:
   - a shipped order pays out after the delay, only once a bank is connected;
   - an unshipped order refunds after the deadline;
   - re-running the cron changes nothing;
-  - the numbers on Dashboard, Earnings and in emails match.
+  - the numbers on Dashboard, Earnings and in E4 match.
 
 **Phase 5: Admin**
-- Admin queries and actions (§17), `audit_log`, report form on item pages, dispute webhooks, fee settings from DB, emails #10–13.
+- Admin queries and actions (§17), `audit_log`, report form on item pages, dispute webhooks, fee settings from DB. Admin resend (E3/E5) and refund (E6/E7) reuse the existing emails.
 - ✅ Every admin button works against real data and shows in the activity log; a 0% creator's next order has `fee_cents = 0`.
 
 **Phase 6: Launch checks**
@@ -837,8 +844,8 @@ My recommendation is in the right-hand column. These are the "values" to settle 
 | Photos per item | 1–8 | Keep. |
 | Ship-to countries | US, Canada | Keep. |
 | Creator countries | US, Canada | Keep (depends on Stripe cross-border setup, §10). |
-| Ship reminders | day 3, 5 | Keep. |
-| Bank reminders | not built | every 3 days, max 5. |
+| Ship reminders | spec: day 3 and 5 | **Decided:** one reminder, 2 days before the deadline (E8). |
+| Bank reminders | not built | **Decided:** not in the MVP; the "Someone ordered" email (E4) carries the connect-your-bank nudge. |
 
 ### Policies
 
@@ -846,7 +853,7 @@ My recommendation is in the right-hand column. These are the "values" to settle 
 |---|---|
 | **Chargeback lost after payout**: take it back from the creator? | Yes for "item not received" when there's no tracking; no when tracking shows delivered. Decide case by case in admin at first. |
 | **Refund after payout**: take it back from the creator? | Yes (the admin dialog already says so). Stripe allows the reversal even if their balance goes negative, which they cover from future sales. |
-| **Unclaimed money** (shipped, never connected a bank) | Reminders for 90 days, then admin reaches out personally. Ask an accountant about holding funds in Canada. |
+| **Unclaimed money** (shipped, never connected a bank) | Admin reaches out personally (admin Home's "Creators to nudge" lists them); decide a cut-off, e.g. 90 days. Ask an accountant about holding funds in Canada. |
 | **Sales tax** | Out of MVP scope. Revisit with Stripe Tax before volume. |
 | **Item after auto-refund** | Back to draft, creator relists (matches current copy). |
 
