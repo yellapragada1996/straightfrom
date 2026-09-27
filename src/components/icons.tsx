@@ -37,6 +37,7 @@ const PATHS = {
   chevronLeft: <path d="M14.5 6L8.5 12l6 6" />,
   chevronRight: <path d="M9.5 6l6 6-6 6" />,
   star: <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.8z" />,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7" /></>,
   logout: <><path d="M10 4H4v16h6" /><path d="M14 8l4 4-4 4M18 12H9" /></>,
   alert: <><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5v.01" /></>,
 } as const;

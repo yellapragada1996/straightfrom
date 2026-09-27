@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { money } from "@/lib/format";
+import { isSignedInAs, useFanState } from "@/lib/fan-store";
 import { loadOrder, type PlacedOrder } from "@/lib/last-order";
+import { FanSignIn } from "./fan/fan-account";
 import { Icon } from "./icons";
 import { RingAvatar } from "./ring-avatar";
 import { Underline } from "./scribbles";
@@ -67,9 +69,11 @@ export function OrderConfirmation() {
           ))}
         </ol>
 
+        <SaveToAccount email={order.email} />
+
         <Link
           href={`/${order.creatorHandle}`}
-          className="mt-10 inline-flex h-[54px] items-center gap-2.5 border-[1.5px] border-ink px-5 font-display font-extrabold uppercase hover:bg-ink hover:text-white"
+          className="mt-8 inline-flex h-[54px] items-center gap-2.5 border-[1.5px] border-ink px-5 font-display font-extrabold uppercase hover:bg-ink hover:text-white"
         >
           Back to @{order.creatorHandle} <Icon name="arrow" />
         </Link>
@@ -107,6 +111,29 @@ export function OrderConfirmation() {
           {order.shipTo.country}
         </div>
       </aside>
+    </div>
+  );
+}
+
+/** Optional sign-up: never required, but offered right after the purchase. */
+function SaveToAccount({ email }: { email: string }) {
+  const fan = useFanState();
+  if (isSignedInAs(fan, email)) {
+    return (
+      <Link href="/account" className="mt-10 flex items-center justify-between gap-3 border border-line bg-soft px-4 py-3.5 text-sm">
+        <span className="flex items-center gap-2"><Icon name="check" className="size-[18px] text-accent" /> Saved to your account</span>
+        <span className="flex items-center gap-1 font-semibold">Your orders <Icon name="arrow" className="size-4" /></span>
+      </Link>
+    );
+  }
+  return (
+    <div className="mt-10 border-[1.5px] border-ink p-5">
+      <p className="inline-block -rotate-2 font-hand text-2xl leading-none font-semibold text-accent">keep track</p>
+      <h2 className="mt-1 font-display text-2xl leading-none font-extrabold uppercase">Save it to your account</h2>
+      <p className="mt-2 mb-4 text-sm leading-relaxed text-ink-2">
+        Optional. See this order and every future one in one place, with tracking. No password: we&apos;ll email you a link.
+      </p>
+      <FanSignIn presetEmail={email} compact />
     </div>
   );
 }

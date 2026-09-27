@@ -45,3 +45,11 @@ export function CartButton() {
     </Link>
   );
 }
+
+export function AccountButton() {
+  return (
+    <Link href="/account" aria-label="Your orders" className={btn}>
+      <Icon name="user" />
+    </Link>
+  );
+}

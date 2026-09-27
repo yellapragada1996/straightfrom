@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "./brand";
-import { CartButton, ShareButton } from "./header-actions";
+import { AccountButton, CartButton, ShareButton } from "./header-actions";
 import { Icon } from "./icons";
 import { RingAvatar } from "./ring-avatar";
 import type { Creator } from "@/lib/types";
@@ -23,6 +23,7 @@ export function TopBar({ creator, back = false, share = true }: { creator?: Crea
         )}
         <div className="flex items-center gap-2">
           {share && <ShareButton label={back ? "Share this item" : "Share this page"} />}
+          <AccountButton />
           <CartButton />
         </div>
       </div>

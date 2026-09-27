@@ -7,7 +7,8 @@ import { useState } from "react";
 import { useCart } from "@/lib/cart";
 import { buildCart } from "@/lib/cart-view-model";
 import { firstName, money } from "@/lib/format";
-import { newOrderId, saveOrder } from "@/lib/last-order";
+import { fanActions } from "@/lib/fan-store";
+import { newOrderId, saveOrder, type PlacedOrder } from "@/lib/last-order";
 import { Icon } from "./icons";
 import { RingAvatar } from "./ring-avatar";
 
@@ -83,7 +84,7 @@ export function CheckoutView() {
       setError("Your card was declined. Nothing was charged. Try another card.");
       return;
     }
-    saveOrder({
+    const placed: PlacedOrder = {
       id: newOrderId(),
       creatorHandle: creator!.handle,
       creatorName: creator!.displayName,
@@ -94,7 +95,9 @@ export function CheckoutView() {
       subtotalCents: subtotal,
       shippingCents: shipping,
       totalCents: total,
-    });
+    };
+    saveOrder(placed);
+    fanActions.recordOrder(placed);
     clear();
     router.push("/checkout/success");
   }
@@ -152,7 +155,7 @@ export function CheckoutView() {
           <div>
             <label htmlFor="email" className={label}>Email</label>
             <input id="email" type="email" autoComplete="email" required value={f.email} onChange={set("email")} className={input} placeholder="you@example.com" />
-            <p className="mt-1.5 text-[13px] text-muted">Your receipt and tracking link go here.</p>
+            <p className="mt-1.5 text-[13px] text-muted">Your receipt and tracking link go here. Use the same email every time and all your orders show up if you create an account.</p>
           </div>
         </fieldset>
 
