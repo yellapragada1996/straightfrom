@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HowItWorks } from "@/components/how-it-works";
-import { Icon, type IconName } from "@/components/icons";
+import { Icon } from "@/components/icons";
 import { ItemCard } from "@/components/item-card";
 import { RingAvatar } from "@/components/ring-avatar";
 import { ArrowDown, Underline } from "@/components/scribbles";
@@ -10,15 +10,7 @@ import { Ticker } from "@/components/ticker";
 import { TopBar } from "@/components/top-bar";
 import { getCreator, getCreatorProducts } from "@/lib/data";
 import { firstName, isSold } from "@/lib/format";
-import type { SocialKey } from "@/lib/types";
-
-const SOCIAL: Record<SocialKey, { label: string; icon: IconName }> = {
-  youtube: { label: "YouTube", icon: "youtube" },
-  instagram: { label: "Instagram", icon: "instagram" },
-  tiktok: { label: "TikTok", icon: "tiktok" },
-  twitch: { label: "Twitch", icon: "twitch" },
-  x: { label: "X", icon: "x" },
-};
+import { socialList } from "@/lib/social";
 
 export async function generateMetadata({ params }: PageProps<"/[handle]">): Promise<Metadata> {
   const { handle } = await params;
@@ -43,7 +35,7 @@ export default async function CreatorPage({ params }: PageProps<"/[handle]">) {
   const sold = products.filter(isSold);
   const first = firstName(creator);
   const [firstWord, ...rest] = creator.displayName.split(" ");
-  const socials = (Object.keys(creator.socialLinks) as SocialKey[]).filter((k) => creator.socialLinks[k]);
+  const socials = socialList(creator.socialLinks);
 
   return (
     <>
@@ -77,14 +69,17 @@ export default async function CreatorPage({ params }: PageProps<"/[handle]">) {
             <p className="mt-2 max-w-[480px] text-base leading-relaxed text-ink-2 md:text-[17px]">{creator.bio}</p>
             {socials.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
-                {socials.map((k) => (
+                {socials.map((s) => (
                   <a
-                    key={k}
-                    href={creator.socialLinks[k]}
+                    key={s.key}
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer me"
+                    aria-label={`${s.label}: @${s.username}`}
                     className="inline-flex h-11 items-center gap-1.5 border-[1.5px] border-ink px-3 text-[13.5px] font-semibold hover:bg-ink hover:text-white md:px-4 md:text-sm"
                   >
-                    <Icon name={SOCIAL[k].icon} className="size-[18px]" />
-                    {SOCIAL[k].label}
+                    <Icon name={s.icon} className="size-[18px]" />
+                    {s.label}
                   </a>
                 ))}
               </div>

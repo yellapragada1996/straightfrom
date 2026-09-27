@@ -1,7 +1,7 @@
 // Shapes mirror the planned database tables (spec §7) so the fake data layer
 // can later be swapped for Supabase without touching the screens.
 
-export type SocialKey = "instagram" | "youtube" | "tiktok" | "x" | "twitch";
+import type { SocialLinks } from "./social";
 
 export type Creator = {
   id: string;
@@ -9,7 +9,8 @@ export type Creator = {
   displayName: string;
   bio: string;
   avatarUrl: string;
-  socialLinks: Partial<Record<SocialKey, string>>;
+  /** Platform → username (links are built from these). */
+  socialLinks: SocialLinks;
   payoutsEnabled: boolean;
   hidden: boolean;
 };
