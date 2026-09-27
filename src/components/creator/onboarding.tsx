@@ -13,7 +13,7 @@ import { PagePreview } from "./page-preview";
 import { AvatarPicker } from "./photo-uploader";
 import { cleanSocialLinks, SocialLinksEditor } from "./social-links-editor";
 import { Btn, CopyButton, Field, inputCls } from "./ui";
-import { PENDING_EMAIL_KEY } from "./login-form";
+import { CLAIM_HANDLE_KEY, PENDING_EMAIL_KEY } from "./login-form";
 
 const STEPS = ["Your link", "Your profile", "Your socials"] as const;
 const BIO_MAX = 160;
@@ -21,6 +21,15 @@ const BIO_MAX = 160;
 function readPendingEmail() {
   try {
     return sessionStorage.getItem(PENDING_EMAIL_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/** Handle typed into "claim your link" on the homepage, if any. */
+function readClaimedHandle() {
+  try {
+    return sessionStorage.getItem(CLAIM_HANDLE_KEY) ?? "";
   } catch {
     return "";
   }
@@ -35,7 +44,7 @@ function OnboardingSteps() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [email] = useState(readPendingEmail);
-  const [handle, setHandle] = useState(() => suggestHandle(email));
+  const [handle, setHandle] = useState(() => readClaimedHandle() || suggestHandle(email));
   const [adult, setAdult] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");

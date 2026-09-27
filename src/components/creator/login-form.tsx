@@ -10,6 +10,7 @@ import { Underline } from "../scribbles";
 import { Btn, Field, inputCls } from "./ui";
 
 export const PENDING_EMAIL_KEY = "sf-pending-email";
+export const CLAIM_HANDLE_KEY = "sf-claim-handle";
 
 /** Magic-link sign in. One screen for both new and returning creators. */
 export function LoginForm() {
