@@ -25,7 +25,7 @@ export function ItemsList() {
 
   return (
     <>
-      <PageTitle title="Your pieces" actions={<Btn href="/dashboard/items/new" icon="plus">New piece</Btn>} />
+      <PageTitle title="Your items" actions={<Btn href="/dashboard/items/new" icon="plus">New item</Btn>} />
       <Tabs
         value={tab}
         onChange={setTab}
@@ -45,10 +45,10 @@ export function ItemsList() {
             {tab === "live"
               ? "List something fans saw in your videos: the jacket, the mic, the thing on your desk. The story is what makes it special."
               : tab === "drafts"
-                ? "Pieces you save without publishing, or take down, show up here."
-                : "Sold pieces stay on your page with a SOLD mark. It shows fans your stuff really goes."}
+                ? "Items you save without publishing, or take down, show up here."
+                : "Sold items stay on your page with a SOLD mark. It shows fans your stuff really goes."}
           </p>
-          {tab !== "sold" && <Btn href="/dashboard/items/new" icon="plus">List a piece</Btn>}
+          {tab !== "sold" && <Btn href="/dashboard/items/new" icon="plus">List an item</Btn>}
         </div>
       ) : (
         <ul className="flex flex-col gap-px border border-line bg-line">
@@ -66,7 +66,7 @@ export function ItemsList() {
                 </Link>
                 <div className="min-w-0 flex-1">
                   <Link href={`/dashboard/items/${p.id}`} className="line-clamp-2 text-[15px] leading-snug font-semibold hover:underline">
-                    {p.title || "Untitled piece"}
+                    {p.title || "Untitled item"}
                   </Link>
                   <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
                     <StatusPill tone={tone}>{label}</StatusPill>

@@ -95,10 +95,10 @@ function OnboardingSteps() {
             </div>
             <p className="text-sm leading-relaxed text-muted">
               Put it in your Instagram and TikTok bio, and in your YouTube descriptions. Fans can see your page right away. It
-              fills up as you list pieces.
+              fills up as you list items.
             </p>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Btn href="/dashboard/items/new" size="lg" icon="plus">List your first piece</Btn>
+              <Btn href="/dashboard/items/new" size="lg" icon="plus">List your first item</Btn>
               <Btn href="/dashboard" size="lg" variant="outline">Go to dashboard</Btn>
             </div>
           </div>

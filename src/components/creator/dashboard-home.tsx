@@ -63,7 +63,7 @@ export function DashboardHome() {
             { label: "To ship", value: String(b.toShip.length), href: "/dashboard/orders", hot: b.toShip.length > 0 },
             { label: "Waiting for you", value: money(b.pendingCents), href: "/dashboard/earnings" },
             { label: "Paid out", value: money(b.paidOutCents), href: "/dashboard/earnings" },
-            { label: "Live pieces", value: String(live), href: "/dashboard/items" },
+            { label: "Live items", value: String(live), href: "/dashboard/items" },
           ].map((x) => (
             <Link key={x.label} href={x.href} className="flex flex-col gap-1 bg-white p-4 hover:bg-soft">
               <span className="text-[13px] text-muted">{x.label}</span>
@@ -114,7 +114,7 @@ export function DashboardHome() {
         {/* List something */}
         <Link href="/dashboard/items/new" className="group flex items-center justify-between gap-4 bg-ink p-5 text-white">
           <div>
-            <p className="font-display text-2xl font-extrabold uppercase">List a new piece</p>
+            <p className="font-display text-2xl font-extrabold uppercase">List a new item</p>
             <p className="mt-1 text-sm text-[#bdbdbd]">Something from a video fans loved? Takes 2 minutes.</p>
           </div>
           <span className="grid size-12 shrink-0 place-items-center bg-accent transition-transform group-hover:rotate-90">

@@ -29,7 +29,7 @@ const PATHS = {
   grid: <><rect x="4" y="4" width="7" height="7" /><rect x="13" y="4" width="7" height="7" /><rect x="4" y="13" width="7" height="7" /><rect x="13" y="13" width="7" height="7" /></>,
   truck: <><path d="M2 7h12v9H2z" /><path d="M14 10h4l3 3v3h-7" /><circle cx="6" cy="18" r="1.8" /><circle cx="17" cy="18" r="1.8" /></>,
   wallet: <><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M16 12.5h2M3 9h18" /></>,
-  settings: <><circle cx="12" cy="12" r="3" /><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" /></>,
+  settings: <><path d="M10.3 3.2l-.5 2.2a6.8 6.8 0 0 0-1.9 1.1l-2.1-.7-1.7 3 1.6 1.5a6.9 6.9 0 0 0 0 2.2l-1.6 1.5 1.7 3 2.1-.7a6.8 6.8 0 0 0 1.9 1.1l.5 2.2h3.4l.5-2.2a6.8 6.8 0 0 0 1.9-1.1l2.1.7 1.7-3-1.6-1.5a6.9 6.9 0 0 0 0-2.2l1.6-1.5-1.7-3-2.1.7a6.8 6.8 0 0 0-1.9-1.1l-.5-2.2z" /><circle cx="12" cy="12" r="2.8" /></>,
   external: <><path d="M14 4h6v6M20 4l-9 9" /><path d="M18 14v6H4V6h6" /></>,
   eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
   bank: <><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" /></>,

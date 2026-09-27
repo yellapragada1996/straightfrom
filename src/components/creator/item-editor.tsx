@@ -26,11 +26,11 @@ export function ItemEditor({ id }: { id?: string }) {
     return (
       <div className="flex flex-col items-start gap-3">
         <h1 className="font-display text-4xl font-extrabold uppercase">Piece not found</h1>
-        <Btn href="/dashboard/items" variant="outline">Back to your pieces</Btn>
+        <Btn href="/dashboard/items" variant="outline">Back to your items</Btn>
       </div>
     );
   }
-  // key: reset the form if we navigate between pieces
+  // key: reset the form if we navigate between items
   return <EditorForm key={id ?? "new"} existing={existing} handle={s.profile?.handle ?? ""} />;
 }
 
@@ -87,9 +87,9 @@ function EditorForm({ existing, handle }: { existing?: Product; handle: string }
   if (sold) {
     return (
       <div className="flex flex-col gap-4">
-        <Link href="/dashboard/items" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"><Icon name="back" className="size-4" /> Your pieces</Link>
+        <Link href="/dashboard/items" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"><Icon name="back" className="size-4" /> Your items</Link>
         <h1 className="font-display text-[40px] leading-[0.9] font-extrabold uppercase">{existing!.title}</h1>
-        <p className="text-ink-2">This piece has sold, so it can&apos;t be edited. It stays on your page as SOLD.</p>
+        <p className="text-ink-2">This item has sold, so it can&apos;t be edited. It stays on your page as SOLD.</p>
         <Btn href="/dashboard/orders" variant="outline" className="self-start">See the order</Btn>
       </div>
     );
@@ -100,9 +100,9 @@ function EditorForm({ existing, handle }: { existing?: Product; handle: string }
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href="/dashboard/items" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"><Icon name="back" className="size-4" /> Your pieces</Link>
+        <Link href="/dashboard/items" className="inline-flex items-center gap-1 text-sm text-muted hover:text-ink"><Icon name="back" className="size-4" /> Your items</Link>
         <h1 className="mt-2 font-display text-[40px] leading-[0.88] font-extrabold tracking-[-0.045em] uppercase md:text-[56px]">
-          {existing ? "Edit piece" : "New piece"}
+          {existing ? "Edit item" : "New item"}
         </h1>
       </div>
 
@@ -115,7 +115,7 @@ function EditorForm({ existing, handle }: { existing?: Product; handle: string }
           </Card>
 
           <Card className="flex flex-col gap-5">
-            <h2 className="-mb-1 font-display text-lg font-extrabold uppercase">The piece</h2>
+            <h2 className="-mb-1 font-display text-lg font-extrabold uppercase">The item</h2>
             <Field label="Title" htmlFor="title" error={tried ? errors.title : null} hint="Name it after the moment fans remember.">
               <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} className={inputCls} placeholder="e.g. The rain jacket from the Japan vlog" />
             </Field>
@@ -148,7 +148,7 @@ function EditorForm({ existing, handle }: { existing?: Product; handle: string }
               </Field>
             </div>
             <p className="-mt-2 text-[13px] leading-snug text-muted">
-              If a fan buys several of your pieces together, they pay the highest shipping price once, since it&apos;s one package.
+              If a fan buys several of your items together, they pay the highest shipping price once, since it&apos;s one package.
             </p>
 
             <div className="border-t border-line pt-4">
@@ -157,7 +157,7 @@ function EditorForm({ existing, handle }: { existing?: Product; handle: string }
               </button>
               {showAdvanced && (
                 <div className="mt-3 max-w-[220px]">
-                  <Field label="How many do you have?" htmlFor="qty" hint="e.g. a pack of signed polaroids. Most pieces are one of one.">
+                  <Field label="How many do you have?" htmlFor="qty" hint="e.g. a pack of signed polaroids. Most items are one of one.">
                     <input
                       id="qty"
                       type="number"

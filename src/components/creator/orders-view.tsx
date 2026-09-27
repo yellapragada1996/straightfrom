@@ -177,7 +177,7 @@ function OrderCard({ order: o, bankConnected }: { order: CreatorOrder; bankConne
           )}
           {o.status === "refunded" && (
             <p className="border-t border-line pt-4 text-sm text-muted">
-              Not shipped within 7 days, so {o.fan.name.split(" ")[0]} was refunded in full. The piece was hidden from your page; publish it again from Pieces when you&apos;re ready.
+              Not shipped within 7 days, so {o.fan.name.split(" ")[0]} was refunded in full. The item was hidden from your page; publish it again from Items when you&apos;re ready.
             </p>
           )}
         </div>

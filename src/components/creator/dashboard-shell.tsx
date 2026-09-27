@@ -13,7 +13,7 @@ import { Btn, ToastProvider } from "./ui";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/dashboard", label: "Home", icon: "home" },
-  { href: "/dashboard/items", label: "Pieces", icon: "grid" },
+  { href: "/dashboard/items", label: "Items", icon: "grid" },
   { href: "/dashboard/orders", label: "Orders", icon: "truck" },
   { href: "/dashboard/earnings", label: "Earnings", icon: "wallet" },
   { href: "/dashboard/settings", label: "Settings", icon: "settings" },
