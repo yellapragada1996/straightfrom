@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/brand";
 import { ClaimForm } from "@/components/home/claim-form";
-import { EarningsCalculator } from "@/components/home/earnings-calculator";
 import { HeroPhone } from "@/components/home/hero-phone";
 import { Icon, type IconName } from "@/components/icons";
 import { ItemCard } from "@/components/item-card";
 import { ArrowDown, Circled, Underline } from "@/components/scribbles";
 import { SiteFooter } from "@/components/site-footer";
 import { Ticker } from "@/components/ticker";
-import { feePercent } from "@/lib/fees";
+import { creatorEarns, feePercent } from "@/lib/fees";
+import { money } from "@/lib/format";
 import { creators, products } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
@@ -39,7 +39,6 @@ export default function Home() {
         <HowItWorks />
         <Trust />
         <Fees />
-        <FounderNote />
         <Faq />
         <FinalCta />
       </main>
@@ -283,7 +282,7 @@ function Trust() {
 function Fees() {
   return (
     <section id="fees" className="scroll-mt-16 border-y border-line bg-soft py-16 md:py-28" aria-labelledby="fees-h">
-      <div className={`${wrap} grid grid-cols-[minmax(0,1fr)] gap-12 lg:grid-cols-2 lg:items-center lg:gap-16`}>
+      <div className={`${wrap} grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-2 lg:items-end lg:gap-16`}>
         <div>
           <p className="inline-block -rotate-2 font-hand text-[28px] font-semibold text-accent">no surprises</p>
           <h2 id="fees-h" className={h2}>
@@ -291,7 +290,9 @@ function Fees() {
             <br />
             <span className="text-accent">{feePercent}</span> when you sell.
           </h2>
-          <ul className="mt-8 flex flex-col gap-3 text-[16px]">
+        </div>
+        <div>
+          <ul className="flex flex-col gap-3 text-[16px]">
             {[
               `We keep ${feePercent} of the item price. That's it.`,
               "You keep 100% of the shipping you charge.",
@@ -303,32 +304,16 @@ function Fees() {
               </li>
             ))}
           </ul>
+          <p className="mt-6 border-t border-line pt-4 text-[15px] text-ink-2">
+            <b className="text-ink">Example:</b> list something for $180 with $15 shipping, and you earn{" "}
+            <b className="font-display text-lg text-accent">{money(creatorEarns(18000, 1500))}</b>.
+          </p>
         </div>
-        <EarningsCalculator />
       </div>
     </section>
   );
 }
 
-function FounderNote() {
-  return (
-    <section className={`${wrap} py-16 md:py-28`} aria-labelledby="founder-h">
-      <div className="mx-auto max-w-[820px]">
-        <h2 id="founder-h" className="text-xs font-bold tracking-[0.1em] text-muted uppercase">Why we built this</h2>
-        <span aria-hidden="true" className="mt-4 block h-12 font-serif text-[120px] leading-none text-accent">“</span>
-        <blockquote className="font-serif text-[28px] leading-[1.25] italic md:text-[38px]">
-          We kept seeing the same comments under creators&apos; videos: &lsquo;where&apos;s that jacket from?&rsquo; &lsquo;I&apos;d buy that mic in a heartbeat.&rsquo; For
-          the biggest names there&apos;s an auction house. For everyone else there was nothing. StraightFrom is the simple version: your things, your story, straight to
-          the fans who were there.
-        </blockquote>
-        <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="inline-block -rotate-3 font-hand text-[40px] leading-none font-medium whitespace-nowrap">— [Your name]</span>
-          <span className="text-sm text-muted">Founder, StraightFrom</span>
-        </p>
-      </div>
-    </section>
-  );
-}
 
 const FAQ: { q: string; a: string }[] = [
   { q: "What can I sell?", a: "Things you've personally owned or used: clothes you wore in videos, gear from your streams, props, signed bits. If fans would recognise it, even better. No mass-produced merch or new stock." },
