@@ -15,6 +15,13 @@
   --animate-ticker: ticker 26s linear infinite;
   --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
   --animate-pop: pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-tap: tap 0.6s ease-out both;
+
+  @keyframes tap {
+    0% { opacity: 0; transform: scale(0.5); }
+    35% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.5); }
+  }
 
   @keyframes pop {
     from { opacity: 0; transform: translateY(-12px) scale(0.94); }
