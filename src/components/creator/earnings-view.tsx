@@ -1,11 +1,17 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- item photos can be local data: URLs */
+
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { balances, creatorActions, fmtDate, payoutDue, payoutPending, useCreatorState, type CreatorOrder } from "@/lib/creator-store";
-import { feePercent, PAYOUT_DELAY_DAYS } from "@/lib/fees";
+import { feePercent } from "@/lib/fees";
 import { money } from "@/lib/format";
 import { Icon } from "../icons";
 import { Btn, Card, PageTitle, StatusPill, useToast } from "./ui";
+
+// Earnings answers three questions: how much have I made, when do I get it,
+// and is there anything I need to do?
 
 export function EarningsView() {
   const s = useCreatorState();
@@ -14,94 +20,102 @@ export function EarningsView() {
   const b = balances(s);
   const connected = s.bank.connected;
 
-  const history = [...s.orders].filter((o) => o.status !== "refunded").sort((a, z) => z.paidAt.localeCompare(a.paidAt));
+  const earned = s.orders.filter((o) => o.status !== "refunded");
+  const totalEarned = earned.reduce((n, o) => n + o.payoutCents, 0);
+  const comingCents = b.toShipCents + b.onTheWayCents + b.readyCents;
+  const nextPayout = [...b.onTheWay].sort((a, z) => payoutDue(a) - payoutDue(z))[0];
+  const lastPayout = [...b.paidOut].sort((a, z) => (z.paidOutAt ?? "").localeCompare(a.paidOutAt ?? ""))[0];
+
+  // One list, soonest money first: ready now, dated payouts, then after-you-ship, then paid.
+  const rank = (o: CreatorOrder) =>
+    o.status === "shipped" && !payoutPending(o) ? 0 : o.status === "shipped" ? 1 : o.status === "paid" ? 2 : 3;
+  const rows = [...earned].sort((a, z) => rank(a) - rank(z) || payoutDue(a) - payoutDue(z) || z.paidAt.localeCompare(a.paidAt));
 
   return (
     <>
       <PageTitle title="Earnings" />
 
       <div className="flex flex-col gap-5">
-        {/* Bank connection */}
-        {connected ? (
-          <Card className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="grid size-11 place-items-center rounded-full bg-[#eaf6ec] text-[#1f7a3a]"><Icon name="check" /></span>
-              <div>
-                <p className="font-semibold">Payouts on · Bank account ending {s.bank.last4}</p>
-                <p className="text-[13px] text-muted">Verified by Stripe. Payouts land in 2–3 business days.</p>
-              </div>
-            </div>
-            <Btn variant="outline" size="sm" icon="external" onClick={() => toast("Opens your Stripe Express dashboard")}>Manage in Stripe</Btn>
-          </Card>
-        ) : (
-          <section className="border-[1.5px] border-accent bg-white p-5 md:p-6">
-            <p className="inline-block -rotate-2 font-hand text-[26px] leading-none font-semibold text-accent">
-              {b.pendingCents > 0 ? `${money(b.pendingCents)} is waiting!` : "one quick step"}
+        {/* Needs you: only when something does */}
+        {!connected && b.readyCents > 0 && (
+          <section className="flex flex-col gap-3 border-[1.5px] border-accent bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[15px]">
+              <b className="font-display text-xl font-extrabold">{money(b.readyCents)} is ready for you.</b>
+              <br />
+              <span className="text-ink-2">Connect your bank to receive it. It takes about 5 minutes with Stripe.</span>
             </p>
-            <h2 className="mt-1 font-display text-[30px] leading-[0.92] font-extrabold tracking-[-0.03em] uppercase md:text-[40px]">Connect your bank to get paid</h2>
-            <ul className="mt-4 flex flex-col gap-2 text-[15px] text-ink-2">
-              <li className="flex gap-2.5"><Icon name="clock" className="mt-0.5 size-[18px]" /> Takes about 5 minutes</li>
-              <li className="flex gap-2.5"><Icon name="lock" className="mt-0.5 size-[18px]" /> Handled by Stripe, who verify your identity. We never see your bank details.</li>
-              <li className="flex gap-2.5"><Icon name="bank" className="mt-0.5 size-[18px]" /> Everything you&apos;ve earned so far is paid out as soon as you&apos;re connected</li>
-            </ul>
-            <Btn size="lg" className="mt-5" icon="bank" onClick={() => setStripeOpen(true)}>Connect with Stripe</Btn>
+            <Btn size="lg" icon="bank" className="shrink-0 whitespace-nowrap" onClick={() => setStripeOpen(true)}>Connect your bank</Btn>
           </section>
         )}
+        {b.toShip.length > 0 && (
+          <Link href="/dashboard/orders" className="flex items-center justify-between gap-3 border border-line bg-white px-5 py-4 text-[15px] hover:border-ink">
+            <span>
+              Ship {b.toShip.length} order{b.toShip.length > 1 ? "s" : ""} to get <b>{money(b.toShipCents)}</b> on its way to you.
+            </span>
+            <span className="flex items-center gap-1 font-semibold whitespace-nowrap">Orders <Icon name="arrow" className="size-4" /></span>
+          </Link>
+        )}
 
-        {/* Balances */}
-        <div className="grid grid-cols-2 gap-px border border-line bg-line lg:grid-cols-4">
-          <Balance label="Waiting to ship" value={b.toShipCents} note={`${b.toShip.length} order${b.toShip.length === 1 ? "" : "s"} to ship`} />
-          <Balance label="On the way" value={b.onTheWayCents} note={`Paid ${PAYOUT_DELAY_DAYS} days after shipping`} />
-          <Balance
-            label={connected ? "Being paid out" : "Held for you"}
-            value={b.readyCents}
-            note={connected ? "Arriving soon" : "Ready: connect your bank"}
-            hot={!connected && b.readyCents > 0}
-          />
-          <Balance label="Paid out" value={b.paidOutCents} note="All time" />
-        </div>
-
-        {/* How it works */}
-        <Card>
-          <h2 className="mb-4 font-display text-lg font-extrabold uppercase">How you get paid</h2>
-          <ol className="grid gap-4 md:grid-cols-3">
-            {[
-              { t: "A fan buys", d: "They pay upfront. You get an email with their address." },
-              { t: "You ship & add tracking", d: "Within 7 days, or the fan is refunded automatically." },
-              { t: `${PAYOUT_DELAY_DAYS} days later, you're paid`, d: "Straight to your bank via Stripe." },
-            ].map((x, i) => (
-              <li key={x.t} className="grid grid-cols-[34px_1fr] gap-3 text-sm leading-snug text-muted">
-                <span className="grid size-[34px] place-items-center rounded-full bg-ink font-display font-extrabold text-white">{i + 1}</span>
-                <div><b className="block text-[15px] font-semibold text-ink">{x.t}</b>{x.d}</div>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-5 border-t border-line pt-4 text-[13px] leading-relaxed text-muted">
-            <b className="text-ink">Our fee:</b> {feePercent} of the item price. You keep 100% of the shipping you charge. Card processing is included, with no
-            other fees.
-          </p>
+        {/* The big number + two balances */}
+        <Card className="p-0">
+          <div className="border-b border-line p-5 md:p-6">
+            <p className="text-[13px] text-muted">Total earned</p>
+            <p className="font-display text-[52px] leading-none font-extrabold tracking-[-0.04em] md:text-[64px]">{money(totalEarned)}</p>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-line">
+            <div className="p-5 md:p-6">
+              <p className="text-[13px] text-muted">Coming to you</p>
+              <p className="font-display text-[30px] leading-none font-extrabold tracking-tight">{money(comingCents)}</p>
+              <p className="mt-1.5 text-[12.5px] text-muted">
+                {nextPayout ? <>Next: <b className="text-ink">{money(nextPayout.payoutCents)}</b> on {fmtDate(new Date(payoutDue(nextPayout)).toISOString())}</> : comingCents ? "Paid once you ship" : "Nothing pending"}
+              </p>
+            </div>
+            <div className="p-5 md:p-6">
+              <p className="text-[13px] text-muted">Paid out</p>
+              <p className="font-display text-[30px] leading-none font-extrabold tracking-tight">{money(b.paidOutCents)}</p>
+              <p className="mt-1.5 text-[12.5px] text-muted">{lastPayout?.paidOutAt ? `Last payout ${fmtDate(lastPayout.paidOutAt)}` : "No payouts yet"}</p>
+            </div>
+          </div>
         </Card>
 
-        {/* History */}
+        {/* Payouts by order */}
         <Card className="p-0">
-          <h2 className="px-5 pt-5 pb-3 font-display text-lg font-extrabold uppercase">Payouts by order</h2>
-          {history.length === 0 ? (
+          <h2 className="px-5 pt-5 pb-3 font-display text-lg font-extrabold uppercase">Payouts</h2>
+          {rows.length === 0 ? (
             <p className="px-5 pb-5 text-sm text-muted">Your first sale will show up here.</p>
           ) : (
             <ul className="divide-y divide-line border-t border-line">
-              {history.map((o) => (
-                <li key={o.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-5 py-3">
-                  <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
-                    <p className="truncate text-sm font-semibold">{o.items[0].title}</p>
-                    <p className="text-[12.5px] text-muted">{o.id} · sold {fmtDate(o.paidAt)}</p>
+              {rows.map((o) => (
+                <li key={o.id} className="flex items-center gap-3 px-5 py-3">
+                  <img src={o.items[0].image} alt="" className="aspect-[4/5] w-10 shrink-0 object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{o.items[0].title}{o.items.length > 1 ? ` + ${o.items.length - 1} more` : ""}</p>
+                    <PayoutWhen o={o} connected={connected} />
                   </div>
-                  <PayoutStatus o={o} connected={connected} />
-                  <span className="ml-auto text-right font-display font-extrabold tabular-nums sm:ml-0 sm:w-16">{money(o.payoutCents)}</span>
+                  <span className="font-display font-extrabold tabular-nums">{money(o.payoutCents)}</span>
                 </li>
               ))}
             </ul>
           )}
         </Card>
+
+        {/* Bank status + the fee, stated once, quietly */}
+        <div className="flex flex-col gap-2 text-[13px] text-muted">
+          {connected ? (
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="flex items-center gap-1.5"><Icon name="check" className="size-4 text-[#1f7a3a]" /> Paid to your bank account ending {s.bank.last4} via Stripe</span>
+              <button type="button" onClick={() => toast("Opens your Stripe Express dashboard")} className="underline underline-offset-2 hover:text-ink">Manage</button>
+            </p>
+          ) : (
+            b.readyCents === 0 && (
+              <p>
+                Payouts go to your bank through Stripe.{" "}
+                <button type="button" onClick={() => setStripeOpen(true)} className="underline underline-offset-2 hover:text-ink">Connect your bank</button>
+              </p>
+            )
+          )}
+          <p>You&apos;re paid 7 days after you ship. StraightFrom keeps {feePercent} of the item price; the shipping you charge is all yours.</p>
+        </div>
       </div>
 
       <StripeDialog
@@ -118,21 +132,15 @@ export function EarningsView() {
   );
 }
 
-function Balance({ label, value, note, hot }: { label: string; value: number; note: string; hot?: boolean }) {
-  return (
-    <div className="flex flex-col gap-1 bg-white p-4">
-      <span className="text-[13px] text-muted">{label}</span>
-      <span className={`font-display text-[26px] leading-none font-extrabold tracking-tight md:text-[30px] ${hot ? "text-accent" : ""}`}>{money(value)}</span>
-      <span className={`text-[12px] ${hot ? "font-semibold text-accent" : "text-muted"}`}>{note}</span>
-    </div>
+function PayoutWhen({ o, connected }: { o: CreatorOrder; connected: boolean }) {
+  if (o.status === "paid") return <p className="text-[12.5px] text-muted">After you ship</p>;
+  if (o.status === "paid_out") return <p className="text-[12.5px] text-[#1f7a3a]">Paid {fmtDate(o.paidOutAt!)}</p>;
+  if (payoutPending(o)) return <p className="text-[12.5px] text-muted">{fmtDate(new Date(payoutDue(o)).toISOString())}</p>;
+  return connected ? (
+    <p className="text-[12.5px] text-muted">Sending now</p>
+  ) : (
+    <p className="text-[12.5px]"><StatusPill tone="red">Ready now · needs bank</StatusPill></p>
   );
-}
-
-function PayoutStatus({ o, connected }: { o: CreatorOrder; connected: boolean }) {
-  if (o.status === "paid") return <StatusPill tone="red">Ship it first</StatusPill>;
-  if (o.status === "paid_out") return <StatusPill tone="green">Paid {fmtDate(o.paidOutAt!)}</StatusPill>;
-  if (payoutPending(o)) return <StatusPill tone="muted">{fmtDate(new Date(payoutDue(o)).toISOString())}</StatusPill>;
-  return connected ? <StatusPill tone="ink">Sending</StatusPill> : <StatusPill tone="red">Needs bank</StatusPill>;
 }
 
 /** Stand-in for Stripe's hosted Connect onboarding (Express). */

@@ -61,7 +61,7 @@ export function DashboardHome() {
         <div className="grid grid-cols-2 gap-px border border-line bg-line md:grid-cols-4">
           {[
             { label: "To ship", value: String(b.toShip.length), href: "/dashboard/orders", hot: b.toShip.length > 0 },
-            { label: "Waiting for you", value: money(b.pendingCents), href: "/dashboard/earnings" },
+            { label: "Coming to you", value: money(b.pendingCents), href: "/dashboard/earnings" },
             { label: "Paid out", value: money(b.paidOutCents), href: "/dashboard/earnings" },
             { label: "Live items", value: String(live), href: "/dashboard/items" },
           ].map((x) => (

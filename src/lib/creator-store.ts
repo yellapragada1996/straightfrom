@@ -209,6 +209,10 @@ export const creatorActions = {
       orders: s.orders.map((o) => (o.id === orderId ? { ...o, status: "shipped", carrier, tracking, shippedAt: new Date().toISOString() } : o)),
     }));
   },
+  /** Fix a typo in the carrier or tracking number after shipping. */
+  updateTracking(orderId: string, carrier: CarrierKey, tracking: string) {
+    set((s) => ({ ...s, orders: s.orders.map((o) => (o.id === orderId ? { ...o, carrier, tracking } : o)) }));
+  },
   connectBank() {
     // In the real app Stripe's account.updated webhook flips payouts on; the daily
     // payout job then pays anything that's past the delay.
