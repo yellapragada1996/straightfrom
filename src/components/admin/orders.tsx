@@ -6,6 +6,7 @@ import {
   adminActions,
   daysUntil,
   fmtDateTime,
+  orderLabel,
   orderTotal,
   payoutDueAt,
   payoutState,
@@ -17,17 +18,16 @@ import { CARRIERS, fmtDate, type CarrierKey } from "@/lib/creator-store";
 import { fmtFee } from "@/lib/fees";
 import { money } from "@/lib/format";
 import { Icon } from "../icons";
-import { Btn, Card, Field, inputCls, PageTitle, StatusPill, Tabs, useToast } from "../creator/ui";
-import { Actions, ConfirmDialog, Empty, OrderStatusPill, PayoutPill, SearchBox, Table, Thumb } from "./bits";
+import { Btn, Card, Field, inputCls, Tabs, useToast } from "../creator/ui";
+import { AdminTitle, ConfirmDialog, Empty, SearchBox, StatusText, Table, Thumb } from "./bits";
 
-type Filter = "all" | "to_ship" | "shipped" | "complete" | "refunded" | "problems";
+type Filter = "all" | "to_ship" | "shipped" | "paid_out" | "refunded";
 
 export function AdminOrders() {
   const s = useAdmin();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const creator = (id: string) => s.creators.find((c) => c.id === id);
-  const isProblem = (o: AdminOrder) => !!o.dispute || o.payoutHeld || payoutState(o, s) === "no_bank";
 
   const match = (o: AdminOrder) => {
     const t = q.trim().toLowerCase();
@@ -35,32 +35,22 @@ export function AdminOrders() {
     const c = creator(o.creatorId);
     return [o.id, o.fan.name, o.fan.email, c?.displayName, c?.handle, ...o.items.map((i) => i.title)].some((v) => v?.toLowerCase().includes(t));
   };
-  const inFilter = (o: AdminOrder) =>
-    ({
-      all: true,
-      to_ship: o.status === "paid",
-      shipped: o.status === "shipped",
-      complete: o.status === "paid_out",
-      refunded: o.status === "refunded",
-      problems: isProblem(o),
-    })[filter];
-  const count = (f: Filter) => s.orders.filter((o) => (f === "problems" ? isProblem(o) : f === "to_ship" ? o.status === "paid" : false)).length;
+  const inFilter = (o: AdminOrder) => filter === "all" || (filter === "to_ship" ? o.status === "paid" : o.status === filter);
   const list = s.orders.filter((o) => inFilter(o) && match(o)).sort((a, b) => b.paidAt.localeCompare(a.paidAt));
 
   return (
     <>
-      <PageTitle title="Orders" />
+      <AdminTitle title="Orders" />
       <SearchBox value={q} onChange={setQ} placeholder="Order number, fan name or email, creator, item" />
       <Tabs
         value={filter}
         onChange={setFilter}
         tabs={[
           { value: "all", label: "All" },
-          { value: "to_ship", label: "To ship", count: count("to_ship") },
+          { value: "to_ship", label: "To ship", count: s.orders.filter((o) => o.status === "paid").length },
           { value: "shipped", label: "Shipped" },
-          { value: "complete", label: "Complete" },
+          { value: "paid_out", label: "Paid out" },
           { value: "refunded", label: "Refunded" },
-          { value: "problems", label: "Problems", count: count("problems") },
         ]}
       />
       {list.length === 0 ? (
@@ -75,7 +65,6 @@ export function AdminOrders() {
               <th>Fan</th>
               <th className="text-right">Total</th>
               <th>Status</th>
-              <th>Creator payout</th>
             </tr>
           </thead>
           <tbody>
@@ -94,13 +83,7 @@ export function AdminOrders() {
                 <td><Link href={`/admin/creators/${o.creatorId}`} className="hover:underline">{creator(o.creatorId)?.displayName}</Link></td>
                 <td>{o.fan.name}<span className="block text-xs text-muted">{o.fan.email}</span></td>
                 <td className="text-right font-semibold tabular-nums">{money(orderTotal(o))}</td>
-                <td>
-                  <span className="flex flex-col items-start gap-1">
-                    <OrderStatusPill status={o.status} />
-                    {o.dispute && <StatusPill tone="red">Chargeback</StatusPill>}
-                  </span>
-                </td>
-                <td><PayoutPill state={payoutState(o, s)} /></td>
+                <td><StatusText {...orderLabel(o, s)} /></td>
               </tr>
             ))}
           </tbody>
@@ -137,15 +120,7 @@ export function AdminOrderDetail({ id }: { id: string }) {
       <Link href="/admin/orders" className="mb-3 inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
         <Icon name="back" className="size-4" /> Orders
       </Link>
-      <PageTitle
-        title={o.id}
-        actions={
-          <span className="flex flex-wrap gap-1.5">
-            <OrderStatusPill status={o.status} />
-            {o.dispute && <StatusPill tone="red">Chargeback</StatusPill>}
-          </span>
-        }
-      />
+      <AdminTitle title={o.id} actions={<StatusText {...orderLabel(o, s)} />} />
 
       {o.dispute && o.status !== "refunded" && (
         <div className="mb-5 flex flex-wrap items-center gap-3 border-[1.5px] border-accent bg-[#fff0ee] p-4">
@@ -223,11 +198,11 @@ export function AdminOrderDetail({ id }: { id: string }) {
                   {left <= 0 ? "· today" : `· ${left} day${left > 1 ? "s" : ""} left`}
                 </span>
               </p>
-              <p className="mt-1 mb-3 text-[13px] text-muted">If it isn&apos;t shipped by then, the fan is refunded automatically.</p>
-              <Actions>
+              <p className="mt-1 text-[13px] text-muted">If it isn&apos;t shipped by then, the fan is refunded automatically.</p>
+              <div className="flex flex-wrap gap-2">
                 <Btn size="sm" variant="outline" onClick={() => { adminActions.extendShipBy(o.id, 3); toast("3 more days. Creator emailed."); }}>+3 days</Btn>
                 <Btn size="sm" variant="outline" onClick={() => { adminActions.extendShipBy(o.id, 7); toast("7 more days. Creator emailed."); }}>+7 days</Btn>
-              </Actions>
+              </div>
             </Card>
           )}
 
@@ -249,54 +224,33 @@ export function AdminOrderDetail({ id }: { id: string }) {
           )}
 
           <Card>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-bold tracking-[0.08em] text-muted uppercase">Creator payout</p>
-              <PayoutPill state={ps} />
-            </div>
+            <p className="mb-2 text-xs font-bold tracking-[0.08em] text-muted uppercase">Creator payout</p>
             <p className={`font-display text-2xl font-extrabold ${ps === "refunded" ? "text-muted line-through" : ""}`}>{money(o.payoutCents)}</p>
-            <p className="mt-1 mb-3 text-[13px] text-muted">
+            <p className="mt-1 text-[13px] text-muted">
               {{
                 after_ship: "Paid 7 days after it ships.",
                 waiting: `Due ${o.shippedAt ? fmtDate(new Date(payoutDueAt(o)).toISOString()) : ""}.`,
                 paying: "Goes out with today's payouts.",
-                no_bank: `Ready, but ${c?.displayName.split(" ")[0]} hasn't connected a bank.`,
-                on_hold: "You put this on hold. It won't pay out until you release it.",
-                paused: "All payouts are paused on the Money page.",
+                no_bank: `Ready, but ${c?.displayName.split(" ")[0]} hasn't connected a bank yet.`,
                 paid_out: `Sent ${o.paidOutAt ? fmtDate(o.paidOutAt) : ""}.`,
                 refunded: "Nothing to pay. The order was refunded.",
               }[ps]}
             </p>
-            {(o.status === "paid" || o.status === "shipped") && (
-              o.payoutHeld ? (
-                <Btn size="sm" variant="outline" onClick={() => { adminActions.releasePayout(o.id); toast("Payout released"); }}>Release payout</Btn>
-              ) : (
-                <Btn size="sm" variant="outline" icon="pause" onClick={() => { adminActions.holdPayout(o.id); toast("Payout on hold"); }}>Hold payout</Btn>
-              )
-            )}
           </Card>
 
           <Card>
-            <p className="mb-3 text-xs font-bold tracking-[0.08em] text-muted uppercase">Emails</p>
-            <div className="flex flex-col items-start gap-2 text-sm">
-              <button type="button" className="underline underline-offset-2" onClick={() => { adminActions.resendEmail(o.id, "confirmation"); toast(`Order confirmation sent to ${o.fan.email}`); }}>
-                Resend order confirmation to fan
-              </button>
-              {o.tracking && (
-                <button type="button" className="underline underline-offset-2" onClick={() => { adminActions.resendEmail(o.id, "tracking"); toast(`Tracking sent to ${o.fan.email}`); }}>
-                  Resend tracking to fan
-                </button>
-              )}
-              <button type="button" className="underline underline-offset-2" onClick={() => { adminActions.resendEmail(o.id, "creator_sale"); toast(`Sale email sent to ${c?.email}`); }}>
-                Resend new-sale email to creator
-              </button>
-            </div>
+            <p className="mb-1 text-xs font-bold tracking-[0.08em] text-muted uppercase">Fan says they got no email?</p>
+            <p className="mb-3 text-[13px] text-muted">Sends {o.fan.email} the {o.tracking ? "tracking email" : "order confirmation"} again.</p>
+            <Btn size="sm" variant="outline" icon="mail" onClick={() => { adminActions.resendEmail(o.id); toast(`Sent to ${o.fan.email}`); }}>
+              Resend {o.tracking ? "tracking email" : "order confirmation"}
+            </Btn>
           </Card>
 
           {o.status !== "refunded" ? (
             <Card>
               <p className="mb-1 text-xs font-bold tracking-[0.08em] text-muted uppercase">Refund</p>
               <p className="mb-3 text-[13px] text-muted">Full refund of {money(orderTotal(o))} to the fan&apos;s card.</p>
-              <Btn variant="primary" icon="refund" full onClick={() => setRefundOpen(true)}>Refund in full</Btn>
+              <Btn variant="outline" icon="refund" full onClick={() => setRefundOpen(true)}>Refund in full</Btn>
             </Card>
           ) : (
             <Card>

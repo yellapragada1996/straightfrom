@@ -1,15 +1,14 @@
 "use client";
 
 import { fmtDateTime, useAdmin } from "@/lib/admin-store";
-import { PageTitle } from "../creator/ui";
-import { Empty } from "./bits";
+import { AdminTitle, Empty } from "./bits";
 
 /** Everything the admin changed, newest first. Real app: an append-only table. */
 export function AdminActivity() {
   const s = useAdmin();
   return (
     <>
-      <PageTitle title="Activity" />
+      <AdminTitle title="Activity log" />
       <p className="-mt-3 mb-5 text-sm text-muted">Every change made from admin, newest first. It can&apos;t be edited.</p>
       {s.log.length === 0 ? (
         <Empty>Nothing yet.</Empty>

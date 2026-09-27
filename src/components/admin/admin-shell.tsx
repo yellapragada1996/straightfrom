@@ -12,14 +12,10 @@ import { Icon, type IconName } from "../icons";
 import { ToastProvider } from "../creator/ui";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
-  { href: "/admin", label: "Overview", icon: "pulse" },
+  { href: "/admin", label: "Home", icon: "home" },
   { href: "/admin/orders", label: "Orders", icon: "truck" },
   { href: "/admin/creators", label: "Creators", icon: "users" },
-  { href: "/admin/items", label: "Items", icon: "grid" },
-  { href: "/admin/money", label: "Money", icon: "wallet" },
   { href: "/admin/fees", label: "Fees", icon: "percent" },
-  { href: "/admin/reports", label: "Reports", icon: "flag" },
-  { href: "/admin/activity", label: "Activity", icon: "list" },
 ];
 
 function AdminTag() {
@@ -35,10 +31,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   if (!hydrated) return <div className="min-h-dvh" aria-busy="true" />;
   if (!s.signedIn) return <AdminSignIn />;
 
-  const openReports = s.reports.filter((r) => r.status === "open").length;
-  const attention = needsAttention(s).length;
+  const todo = needsAttention(s).length + s.reports.filter((r) => r.status === "open").length;
   const isActive = (href: string) => (href === "/admin" ? pathname === href : pathname.startsWith(href));
-  const badge = (href: string) => (href === "/admin" ? attention : href === "/admin/reports" ? openReports : 0);
+  const badge = (href: string) => (href === "/admin" ? todo : 0);
 
   return (
     <ToastProvider>
@@ -63,13 +58,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </Link>
             ))}
           </nav>
-          {s.payoutsPaused && (
-            <Link href="/admin/money" className="mt-6 flex items-center gap-2 bg-accent px-3 py-2 text-[13px] font-semibold">
-              <Icon name="pause" className="size-4" /> Payouts are paused
-            </Link>
-          )}
           <div className="mt-auto flex flex-col gap-1 border-t border-white/15 pt-4 text-sm">
-            <p className="truncate px-3 text-xs text-white/50">admin@straightfrom.co</p>
+            <Link
+              href="/admin/activity"
+              aria-current={isActive("/admin/activity") ? "page" : undefined}
+              className={`flex h-10 items-center gap-2.5 px-3 ${isActive("/admin/activity") ? "bg-white text-ink" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+            >
+              <Icon name="list" className="size-[18px]" /> Activity log
+            </Link>
+            <p className="mt-2 truncate px-3 text-xs text-white/50">admin@straightfrom.co</p>
             <button
               type="button"
               onClick={() => {
@@ -102,13 +99,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <Icon name="logout" className="size-5" />
             </button>
           </div>
-          <nav aria-label="Admin" className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-2">
+          <nav aria-label="Admin" className="grid grid-cols-4 gap-1 px-3 pb-2">
             {NAV.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
                 aria-current={isActive(n.href) ? "page" : undefined}
-                className={`flex h-8 shrink-0 items-center gap-1.5 px-2.5 text-[13px] font-semibold ${isActive(n.href) ? "bg-white text-ink" : "text-white/70"}`}
+                className={`flex h-8 items-center justify-center gap-1.5 text-[13px] font-semibold ${isActive(n.href) ? "bg-white text-ink" : "text-white/70"}`}
               >
                 {n.label}
                 {badge(n.href) > 0 && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-white">{badge(n.href)}</span>}

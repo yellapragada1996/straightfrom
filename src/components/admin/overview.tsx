@@ -1,36 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { creatorStats, isoDaysAgo, needsAttention, orderTotal, payoutState, timeAgo, useAdmin } from "@/lib/admin-store";
+import {
+  adminActions,
+  creatorNextStep,
+  isoDaysAgo,
+  keptCents,
+  needsAttention,
+  orderTotal,
+  reportTargetName,
+  timeAgo,
+  useAdmin,
+  type Report,
+} from "@/lib/admin-store";
 import { money } from "@/lib/format";
 import { Icon } from "../icons";
-import { PageTitle } from "../creator/ui";
-import { CreatorAvatar, OrderStatusPill, SectionTitle, Stat } from "./bits";
+import { Btn, useToast } from "../creator/ui";
+import { AdminTitle, CreatorAvatar, SectionTitle, Stat } from "./bits";
+
+const signed = (cents: number) => (cents < 0 ? `−${money(-cents)}` : money(cents));
 
 export function AdminOverview() {
   const s = useAdmin();
   const todo = needsAttention(s);
+  const reports = s.reports.filter((r) => r.status === "open").sort((a, b) => b.at.localeCompare(a.at));
   const weekAgo = isoDaysAgo(7);
 
   const kept = s.orders.filter((o) => o.status !== "refunded");
-  const sum = (os: typeof s.orders, f: (o: (typeof s.orders)[number]) => number) => os.reduce((n, o) => n + f(o), 0);
-  const withLive = s.creators.filter((c) => creatorStats(s, c.id).liveItems > 0).length;
-  const withSale = new Set(kept.map((o) => o.creatorId)).size;
+  const sales = kept.reduce((n, o) => n + orderTotal(o), 0);
+  const fees = kept.reduce((n, o) => n + o.feeCents, 0);
+  const keep = keptCents(s.orders);
   const newCreators = s.creators.filter((c) => c.joinedAt > weekAgo).length;
   const ordersWeek = s.orders.filter((o) => o.paidAt > weekAgo).length;
-  const owed = kept.filter((o) => o.status !== "paid_out");
-  const held = s.orders.filter((o) => payoutState(o, s) === "no_bank");
 
-  const recentOrders = [...s.orders].sort((a, b) => b.paidAt.localeCompare(a.paidAt)).slice(0, 5);
-  const newest = [...s.creators].sort((a, b) => b.joinedAt.localeCompare(a.joinedAt)).slice(0, 5);
+  const rank = { list: 0, sell: 1, bank: 2 };
+  const nudge = s.creators
+    .filter((c) => c.status === "active")
+    .map((c) => ({ c, next: creatorNextStep(s, c) }))
+    .filter((x): x is { c: typeof x.c; next: NonNullable<typeof x.next> } => x.next !== null)
+    .sort((a, b) => rank[a.next.step] - rank[b.next.step] || a.c.joinedAt.localeCompare(b.c.joinedAt));
 
   return (
     <>
-      <PageTitle title="Overview" />
+      <AdminTitle title="Home" />
 
       <section className="mb-8">
-        <SectionTitle aside={<span className="text-sm text-muted">{todo.length ? `${todo.length} to look at` : ""}</span>}>Needs attention</SectionTitle>
-        {todo.length === 0 ? (
+        <SectionTitle>To do</SectionTitle>
+        {todo.length + reports.length === 0 ? (
           <div className="border border-dashed border-muted bg-white p-5">
             <p className="font-hand text-[26px] leading-none text-accent">all clear ✓</p>
           </div>
@@ -48,69 +64,104 @@ export function AdminOverview() {
                 </Link>
               </li>
             ))}
+            {reports.map((r) => (
+              <ReportRow key={r.id} report={r} />
+            ))}
           </ul>
         )}
       </section>
 
       <section className="mb-8">
-        <SectionTitle>Growth</SectionTitle>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Creators" value={String(s.creators.length)} sub={`${newCreators} joined this week`} />
-          <Stat label="With a live item" value={String(withLive)} sub={`${s.creators.length - withLive} ${s.creators.length - withLive === 1 ? "hasn't" : "haven't"} listed yet`} />
-          <Stat label="Made a sale" value={String(withSale)} sub={`of ${s.creators.length} creators`} />
           <Stat label="Orders" value={String(s.orders.length)} sub={`${ordersWeek} this week`} />
+          <Stat label="Sales" value={money(sales)} sub="Paid by fans, minus refunds" />
+          <Stat label="We keep" value={signed(keep)} sub={`${money(fees)} in fees, minus Stripe's card fees (est.)`} tone={keep < 0 ? "red" : undefined} />
         </div>
       </section>
 
-      <section className="mb-8">
-        <SectionTitle aside={<Link href="/admin/money" className="text-sm font-semibold underline underline-offset-4">Money</Link>}>Money</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Sales" value={money(sum(kept, orderTotal))} sub="Paid by fans, minus refunds" />
-          <Stat label="Our revenue" value={money(sum(kept, (o) => o.feeCents))} sub="Fees on those sales" />
-          <Stat label="Owed to creators" value={money(sum(owed, (o) => o.payoutCents))} sub={`${owed.length} orders not paid out yet`} />
-          <Stat label="Held: no bank" value={money(sum(held, (o) => o.payoutCents))} sub="Ready, waiting on a bank" tone={held.length ? "red" : undefined} />
-        </div>
-      </section>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section>
-          <SectionTitle aside={<Link href="/admin/orders" className="text-sm font-semibold underline underline-offset-4">All orders</Link>}>Latest orders</SectionTitle>
+      <section>
+        <SectionTitle aside={<Link href="/admin/creators" className="text-sm font-semibold underline underline-offset-4">All creators</Link>}>
+          Creators to nudge
+        </SectionTitle>
+        <p className="-mt-1 mb-3 text-sm text-muted">Everyone who hasn&apos;t finished setting up, and their next step.</p>
+        {nudge.length === 0 ? (
+          <div className="border border-dashed border-muted bg-white p-5 text-sm text-muted">Every creator is live, has made a sale, and has a bank connected.</div>
+        ) : (
           <ul className="border border-line bg-white">
-            {recentOrders.map((o) => (
-              <li key={o.id} className="border-t border-line first:border-t-0">
-                <Link href={`/admin/orders/${o.id}`} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-soft">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{o.items[0].title}</span>
-                    <span className="block text-muted">{o.id} · {timeAgo(o.paidAt)}</span>
+            {nudge.map(({ c, next }) => (
+              <li key={c.id} className="flex items-center gap-3 border-t border-line px-4 py-3 first:border-t-0">
+                <CreatorAvatar c={c} />
+                <Link href={`/admin/creators/${c.id}`} className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-semibold hover:underline">{c.displayName}</span>
+                  <span className="block text-[13px] text-muted">
+                    {next.text} · joined {timeAgo(c.joinedAt)}
                   </span>
-                  <span className="font-semibold tabular-nums">{money(orderTotal(o))}</span>
-                  <OrderStatusPill status={o.status} />
                 </Link>
+                <Btn size="sm" variant="outline" icon="mail" href={`mailto:${c.email}`}>Email</Btn>
               </li>
             ))}
           </ul>
-        </section>
-        <section>
-          <SectionTitle aside={<Link href="/admin/creators" className="text-sm font-semibold underline underline-offset-4">All creators</Link>}>Newest creators</SectionTitle>
-          <ul className="border border-line bg-white">
-            {newest.map((c) => {
-              const st = creatorStats(s, c.id);
-              return (
-                <li key={c.id} className="border-t border-line first:border-t-0">
-                  <Link href={`/admin/creators/${c.id}`} className="flex items-center gap-3 px-4 py-3 text-sm hover:bg-soft">
-                    <CreatorAvatar c={c} />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{c.displayName}</span>
-                      <span className="block text-muted">@{c.handle} · joined {timeAgo(c.joinedAt)}</span>
-                    </span>
-                    <span className="text-muted">{st.liveItems} live · {st.sales} sold</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      </div>
+        )}
+      </section>
+
+      <Link href="/admin/activity" className="mt-8 inline-flex items-center gap-2 text-sm text-muted underline underline-offset-4 hover:text-ink md:hidden">
+        <Icon name="list" className="size-4" /> Activity log
+      </Link>
     </>
+  );
+}
+
+/** A fan report, handled right in the to-do list. */
+function ReportRow({ report: r }: { report: Report }) {
+  const s = useAdmin();
+  const toast = useToast();
+  const item = r.target.kind === "item" ? s.items.find((p) => p.id === r.target.id) : undefined;
+  const creatorId = r.target.kind === "creator" ? r.target.id : item?.creatorId;
+  const isItem = r.target.kind === "item";
+
+  return (
+    <li className="flex gap-3 border-t border-line px-4 py-3 first:border-t-0">
+      <span className="mt-2 size-2 shrink-0 rounded-full bg-ink" />
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-semibold">
+          Report: {r.reason} <span className="font-normal text-muted">· {timeAgo(r.at)}</span>
+        </p>
+        <p className="text-[13px] text-muted">
+          {isItem ? "Item " : "Page "}
+          {creatorId ? (
+            <Link href={`/admin/creators/${creatorId}`} className="underline underline-offset-2 hover:text-ink">{reportTargetName(s, r)}</Link>
+          ) : (
+            reportTargetName(s, r)
+          )}
+        </p>
+        <p className="mt-1.5 border-l-2 border-line pl-3 text-sm text-ink-2">{r.message}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Btn
+            size="sm"
+            variant="dark"
+            onClick={() => {
+              adminActions.resolveReport(r.id, "hide");
+              toast(isItem ? "Item hidden, report closed" : "Page hidden, report closed");
+            }}
+          >
+            {isItem ? "Hide item" : "Hide page"}
+          </Btn>
+          <Btn
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              adminActions.resolveReport(r.id, "no_action");
+              toast("Report closed");
+            }}
+          >
+            Nothing wrong, close
+          </Btn>
+          <Btn size="sm" variant="ghost" icon="mail" href={`mailto:${r.reporterEmail}`}>
+            Reply
+          </Btn>
+        </div>
+      </div>
+    </li>
   );
 }

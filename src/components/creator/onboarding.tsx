@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useHydrated } from "@/lib/cart";
-import { creatorActions } from "@/lib/creator-store";
+import { creatorActions, creatorIdFor } from "@/lib/creator-store";
 import { checkHandle, suggestHandle } from "@/lib/handles";
+import { platformActions } from "@/lib/platform-store";
 import type { SocialLinks } from "@/lib/social";
 import { Wordmark } from "../brand";
 import { Icon } from "../icons";
@@ -49,14 +50,17 @@ function OnboardingSteps() {
   const canNext = step === 0 ? check.ok && adult : step === 1 ? displayName.trim().length > 0 : true;
 
   function finish() {
-    creatorActions.startNew({
+    const profile = {
       email: email || "you@example.com",
       handle: h,
       displayName: displayName.trim(),
       bio: bio.trim(),
       avatarUrl,
       socialLinks: cleanSocialLinks(socials),
-    });
+    };
+    creatorActions.startNew(profile);
+    // A rate agreed before sign-up (set in admin) becomes theirs now.
+    platformActions.claimPendingFee(profile.email, creatorIdFor(profile));
     setDone(true);
     window.scrollTo({ top: 0 });
   }

@@ -10,3 +10,9 @@ export const creatorEarns = (itemCents: number, shippingCents: number, feeBps: n
   itemCents - feeFor(itemCents, feeBps) + shippingCents;
 /** 490 → "4.9%", 0 → "0%" */
 export const fmtFee = (feeBps: number) => `${Number((feeBps / 100).toFixed(2))}%`;
+
+// Stripe's card fee (US cards). It's charged on the full amount the fan pays and
+// isn't returned on refunds. Used for our own numbers in admin; an estimate.
+const STRIPE_PCT_BPS = 290;
+const STRIPE_FIXED_CENTS = 30;
+export const stripeFeeEstimate = (chargedCents: number) => Math.round((chargedCents * STRIPE_PCT_BPS) / 10000) + STRIPE_FIXED_CENTS;

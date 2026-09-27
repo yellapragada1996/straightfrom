@@ -3,11 +3,9 @@
 /* eslint-disable @next/next/no-img-element -- photos may be local data: URLs */
 
 import { useEffect, useRef, useState } from "react";
-import type { AdminCreator, PayoutState } from "@/lib/admin-store";
-import { PAYOUT_LABEL } from "@/lib/admin-store";
-import type { OrderStatus } from "@/lib/creator-store";
+import type { AdminCreator } from "@/lib/admin-store";
 import { Icon } from "../icons";
-import { Btn, Field, inputCls, StatusPill } from "../creator/ui";
+import { Btn, Field, inputCls } from "../creator/ui";
 
 // Small pieces shared by the admin screens. Denser than the creator side:
 // tables, pills and confirmations.
@@ -73,22 +71,24 @@ export function Empty({ children }: { children: React.ReactNode }) {
   return <div className="border border-dashed border-muted bg-white p-6 text-sm text-muted">{children}</div>;
 }
 
-export function OrderStatusPill({ status }: { status: OrderStatus }) {
-  const map: Record<OrderStatus, [React.ComponentProps<typeof StatusPill>["tone"], string]> = {
-    paid: ["red", "To ship"],
-    shipped: ["ink", "Shipped"],
-    paid_out: ["green", "Complete"],
-    refunded: ["muted", "Refunded"],
-  };
-  const [tone, label] = map[status];
-  return <StatusPill tone={tone}>{label}</StatusPill>;
+/** Plain-text status. Red only when it needs you. */
+export function StatusText({ text, urgent }: { text: string; urgent?: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 text-[13px] font-semibold whitespace-nowrap ${urgent ? "text-accent" : "text-ink-2"}`}>
+      {urgent && <span className="size-1.5 rounded-full bg-accent" />}
+      {text}
+    </span>
+  );
 }
 
-export function PayoutPill({ state }: { state: PayoutState }) {
-  const tone: Record<PayoutState, React.ComponentProps<typeof StatusPill>["tone"]> = {
-    after_ship: "muted", waiting: "muted", paying: "green", no_bank: "red", on_hold: "red", paused: "red", paid_out: "green", refunded: "muted",
-  };
-  return <StatusPill tone={tone[state]}>{PAYOUT_LABEL[state]}</StatusPill>;
+/** Admin page heading: smaller than the creator side so more fits on screen. */
+export function AdminTitle({ title, actions }: { title: string; actions?: React.ReactNode }) {
+  return (
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <h1 className="font-display text-[30px] leading-none font-extrabold tracking-[-0.035em] uppercase md:text-[36px]">{title}</h1>
+      {actions}
+    </div>
+  );
 }
 
 /**
@@ -172,9 +172,4 @@ export function ConfirmDialog({
       </form>
     </dialog>
   );
-}
-
-/** A row of small action buttons. */
-export function Actions({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap gap-2">{children}</div>;
 }

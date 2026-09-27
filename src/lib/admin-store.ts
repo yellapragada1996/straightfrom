@@ -1,7 +1,7 @@
 "use client";
 
 import { CARRIERS, type CarrierKey, type CreatorOrder, type OrderStatus } from "./creator-store";
-import { DEFAULT_FEE_BPS, feeFor, PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS } from "./fees";
+import { DEFAULT_FEE_BPS, feeFor, PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS, stripeFeeEstimate } from "./fees";
 import { createLocalStore } from "./local-store";
 import { creators as sampleCreators, products as sampleProducts } from "./mock-data";
 import type { Product } from "./types";
@@ -12,7 +12,7 @@ import type { Product } from "./types";
 
 export const ADMIN_EMAIL = "admin@straightfrom.co";
 
-export type CreatorStatus = "active" | "hidden" | "suspended";
+export type CreatorStatus = "active" | "hidden";
 
 export type AdminCreator = {
   id: string;
@@ -50,7 +50,6 @@ export type AdminOrder = {
   refundedAt?: string;
   refundReason?: string;
   extraShipDays: number;
-  payoutHeld: boolean;
   dispute?: { openedAt: string; reason: string };
   events: OrderEvent[];
 };
@@ -70,9 +69,8 @@ export type Report = {
 export type LogEntry = { id: string; at: string; text: string };
 
 export type AdminState = {
-  version: 1;
+  version: 2;
   signedIn: boolean;
-  payoutsPaused: boolean;
   creators: AdminCreator[];
   items: Product[];
   orders: AdminOrder[];
@@ -146,7 +144,7 @@ function seed(): AdminState {
       id, creatorId,
       items: [{ productId, title: p.title, image: p.images[0], priceCents: p.priceCents, quantity: 1 }],
       itemCents: p.priceCents, shippingCents: p.shippingCents, feeBps, feeCents, payoutCents,
-      fan, status, ...d, extraShipDays: 0, payoutHeld: false, events,
+      fan, status, ...d, extraShipDays: 0, events,
       ...extraFields,
     };
   };
@@ -184,7 +182,7 @@ function seed(): AdminState {
     { id: "L-1", at: ago(40), text: "Set the platform fee to 4.9%" },
   ];
 
-  return { version: 1, signedIn: false, payoutsPaused: false, creators, items, orders, reports, log };
+  return { version: 2, signedIn: false, creators, items, orders, reports, log };
 }
 
 const fmtMoney = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: c % 100 ? 2 : 0 })}`;
@@ -247,23 +245,16 @@ export const adminActions = {
         : addEvent({ ...o, carrier, tracking }, `Tracking changed to ${label} ${tracking}. New link emailed to ${o.fan.name.split(" ")[0]}.`),
     ));
   },
-  resendEmail(id: string, kind: "confirmation" | "tracking" | "creator_sale") {
-    const label = { confirmation: "order confirmation to the fan", tracking: "tracking email to the fan", creator_sale: "new-sale email to the creator" }[kind];
-    act(`Resent the ${label} for ${id}`, mapOrder(id, (o) => addEvent(o, `Resent the ${label}.`)));
-  },
-  holdPayout(id: string) {
-    act(`Held the payout for ${id}`, mapOrder(id, (o) => addEvent({ ...o, payoutHeld: true }, "Payout put on hold.")));
-  },
-  releasePayout(id: string) {
-    act(`Released the payout for ${id}`, mapOrder(id, (o) => addEvent({ ...o, payoutHeld: false }, "Payout hold removed.")));
-  },
-  setPayoutsPaused(paused: boolean, reason?: string) {
-    act(paused ? `Paused all payouts${reason ? `: ${reason}` : ""}` : "Resumed payouts", (s) => ({ ...s, payoutsPaused: paused }));
+  /** Resends the fan's latest email: tracking once shipped, otherwise the order confirmation. */
+  resendEmail(id: string) {
+    const o = store.get().orders.find((x) => x.id === id)!;
+    const label = o.tracking ? "tracking email" : "order confirmation";
+    act(`Resent the ${label} for ${id} to ${o.fan.email}`, mapOrder(id, (o) => addEvent(o, `Resent the ${label} to ${o.fan.name.split(" ")[0]}.`)));
   },
 
   // Creators
   setCreatorStatus(id: string, status: CreatorStatus, reason?: string) {
-    const verb = { active: "Restored", hidden: "Hid the page of", suspended: "Suspended" }[status];
+    const verb = { active: "Unhid the page of", hidden: "Hid the page of" }[status];
     act(`${verb} ${creatorName(id)}${reason ? `: ${reason}` : ""}`, mapCreator(id, (c) => ({ ...c, status })));
   },
   removeBio(id: string) {
@@ -294,17 +285,19 @@ export const adminActions = {
   },
 
   // Reports
-  resolveReport(id: string, resolution: string) {
-    act(`Closed report ${id}: ${resolution}`, (s) => ({
-      ...s,
-      reports: s.reports.map((r) => (r.id === id ? { ...r, status: "resolved", resolvedAt: now(), resolution } : r)),
-    }));
-  },
-  reopenReport(id: string) {
-    act(`Reopened report ${id}`, (s) => ({
-      ...s,
-      reports: s.reports.map((r) => (r.id === id ? { ...r, status: "open", resolvedAt: undefined, resolution: undefined } : r)),
-    }));
+  /** Close a report, optionally hiding what was reported in the same step. */
+  resolveReport(id: string, outcome: "hide" | "no_action") {
+    const r = store.get().reports.find((x) => x.id === id)!;
+    const resolution =
+      outcome === "no_action" ? "No action needed" : r.target.kind === "item" ? "Hid the item" : "Hid the page";
+    act(`Closed report ${id} on ${reportTargetName(store.get(), r)}: ${resolution}`, (s) => {
+      let next = { ...s, reports: s.reports.map((x) => (x.id === id ? { ...x, status: "resolved" as const, resolvedAt: now(), resolution } : x)) };
+      if (outcome === "hide")
+        next = r.target.kind === "item"
+          ? mapItem(r.target.id, (p) => ({ ...p, status: "hidden" }))(next)
+          : mapCreator(r.target.id, (c) => ({ ...c, status: "hidden" }))(next);
+      return next;
+    });
   },
 };
 
@@ -314,7 +307,7 @@ export const payoutDueAt = (o: AdminOrder) => (o.shippedAt ? new Date(o.shippedA
 export const daysUntil = (t: number) => Math.ceil((t - Date.now()) / DAY);
 export const orderTotal = (o: AdminOrder) => o.itemCents + o.shippingCents;
 
-export type PayoutState = "after_ship" | "waiting" | "paying" | "no_bank" | "on_hold" | "paused" | "paid_out" | "refunded";
+export type PayoutState = "after_ship" | "waiting" | "paying" | "no_bank" | "paid_out" | "refunded";
 
 /** Where the creator's money for this order stands. */
 export function payoutState(o: AdminOrder, s: AdminState): PayoutState {
@@ -322,22 +315,26 @@ export function payoutState(o: AdminOrder, s: AdminState): PayoutState {
   if (o.status === "paid_out") return "paid_out";
   if (o.status === "paid") return "after_ship";
   if (payoutDueAt(o) > Date.now()) return "waiting";
-  if (o.payoutHeld) return "on_hold";
-  if (s.payoutsPaused) return "paused";
   const c = s.creators.find((x) => x.id === o.creatorId);
   return c?.bankConnected ? "paying" : "no_bank";
 }
 
-export const PAYOUT_LABEL: Record<PayoutState, string> = {
-  after_ship: "After it ships",
-  waiting: "Waiting 7 days",
-  paying: "Paying out today",
-  no_bank: "Held: no bank",
-  on_hold: "On hold",
-  paused: "Paused",
-  paid_out: "Paid out",
-  refunded: "Refunded",
-};
+/** One plain status per order. `urgent` = you should do something. */
+export function orderLabel(o: AdminOrder, s: AdminState): { text: string; urgent: boolean } {
+  if (o.dispute && o.status !== "refunded") return { text: "Chargeback", urgent: true };
+  if (o.status === "refunded") return { text: "Refunded", urgent: false };
+  if (o.status === "paid_out") return { text: "Paid out", urgent: false };
+  if (o.status === "paid") {
+    const left = daysUntil(shipByAt(o));
+    return { text: left <= 0 ? "To ship · due today" : `To ship · ${left} day${left > 1 ? "s" : ""} left`, urgent: left <= 2 };
+  }
+  const ps = payoutState(o, s);
+  return { text: ps === "no_bank" ? "Shipped · payout waiting on bank" : "Shipped", urgent: false };
+}
+
+/** What we actually keep: fees on orders that stuck, minus Stripe's card fee on every charge (not returned on refunds). */
+export const keptCents = (orders: AdminOrder[]) =>
+  orders.reduce((n, o) => n + (o.status === "refunded" ? 0 : o.feeCents) - stripeFeeEstimate(orderTotal(o)), 0);
 
 export function creatorStats(s: AdminState, creatorId: string) {
   const orders = s.orders.filter((o) => o.creatorId === creatorId);
@@ -350,6 +347,31 @@ export function creatorStats(s: AdminState, creatorId: string) {
     liveItems: s.items.filter((p) => p.creatorId === creatorId && p.status === "available").length,
     items: s.items.filter((p) => p.creatorId === creatorId),
   };
+}
+
+/** Search: the start of any word in their name, or the start of their @handle or email. */
+export function matchesCreator(c: Pick<AdminCreator, "displayName" | "handle" | "email">, query: string) {
+  const t = query.trim().toLowerCase().replace(/^@/, "");
+  if (!t) return true;
+  return (
+    c.displayName.toLowerCase().split(/\s+/).some((w) => w.startsWith(t)) ||
+    c.displayName.toLowerCase().startsWith(t) ||
+    c.handle.startsWith(t) ||
+    c.email.toLowerCase().startsWith(t)
+  );
+}
+
+/** A creator's next step toward getting paid, or null once they're fully set up. */
+export function creatorNextStep(s: AdminState, c: AdminCreator): { step: "list" | "sell" | "bank"; text: string } | null {
+  const st = creatorStats(s, c.id);
+  if (st.items.every((p) => p.status === "draft" || p.status === "hidden"))
+    return { step: "list", text: st.items.length ? "Has drafts, nothing live yet" : "Hasn't added an item" };
+  if (st.sales === 0) return { step: "sell", text: "Live, no sale yet" };
+  if (!c.bankConnected) {
+    const waiting = s.orders.filter((o) => o.creatorId === c.id && payoutState(o, s) === "no_bank").reduce((n, o) => n + o.payoutCents, 0);
+    return { step: "bank", text: waiting ? `Needs to connect a bank · ${fmtMoney(waiting)} waiting` : "Needs to connect a bank" };
+  }
+  return null;
 }
 
 export type Attention = { key: string; tone: "red" | "ink"; title: string; detail: string; href: string };
@@ -368,15 +390,6 @@ export function needsAttention(s: AdminState): Attention[] {
     if (left <= 2)
       out.push({ key: "s" + o.id, tone: "red", title: `${o.id} not shipped yet`, detail: `${name(o.creatorId)} · ${left <= 0 ? "refunds today" : `${left} day${left > 1 ? "s" : ""} left to ship`}`, href: `/admin/orders/${o.id}` });
   }
-  for (const r of s.reports.filter((r) => r.status === "open"))
-    out.push({ key: "r" + r.id, tone: "ink", title: `Report: ${r.reason}`, detail: reportTargetName(s, r), href: "/admin/reports" });
-  const noBank = s.orders.filter((o) => payoutState(o, s) === "no_bank");
-  for (const cid of [...new Set(noBank.map((o) => o.creatorId))]) {
-    const cents = noBank.filter((o) => o.creatorId === cid).reduce((n, o) => n + o.payoutCents, 0);
-    out.push({ key: "b" + cid, tone: "ink", title: `${fmtMoney(cents)} waiting for ${name(cid)}`, detail: "Ready to pay, but no bank connected yet", href: `/admin/creators/${cid}` });
-  }
-  for (const o of s.orders.filter((o) => o.payoutHeld && o.status === "shipped"))
-    out.push({ key: "h" + o.id, tone: "ink", title: `Payout on hold: ${o.id}`, detail: `${fmtMoney(o.payoutCents)} to ${name(o.creatorId)}`, href: `/admin/orders/${o.id}` });
   return out;
 }
 
