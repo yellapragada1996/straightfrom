@@ -58,7 +58,6 @@ export function LoginForm() {
               "Your own page, live in 2 minutes",
               "List the things fans saw in your videos",
               "You ship it, we handle payments",
-              "No bank details needed to start",
             ].map((t) => (
               <li key={t} className="flex items-center gap-2.5">
                 <Icon name="check" className="size-[18px] text-accent" /> {t}

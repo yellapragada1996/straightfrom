@@ -110,9 +110,6 @@ function OnboardingSteps() {
               <Btn href="/dashboard/items/new" size="lg" icon="plus">List your first piece</Btn>
               <Btn href="/dashboard" size="lg" variant="outline">Go to dashboard</Btn>
             </div>
-            <p className="text-[13px] text-muted">
-              No bank details needed yet. We&apos;ll ask when you make your first sale.
-            </p>
           </div>
         ) : (
           <>

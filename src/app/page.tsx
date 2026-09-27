@@ -96,7 +96,7 @@ function Hero() {
           <ClaimForm />
         </div>
         <ul className="mt-1 flex flex-wrap gap-x-5 gap-y-2 text-[13.5px] text-muted">
-          {["Free to start", "No bank details needed", "You only pay when you sell"].map((t) => (
+          {["Free to start", "No approval wait", "You only pay when you sell"].map((t) => (
             <li key={t} className="flex items-center gap-1.5">
               <Icon name="check" className="size-4 text-accent" /> {t}
             </li>
@@ -234,7 +234,7 @@ function Trust() {
     { i: "check", t: "No approval wait", d: "Your page is live the moment you create it." },
     { i: "box", t: "No inventory, no warehouse", d: "It's your stuff, in your home. You ship it when it sells." },
     { i: "star", t: "Your call, always", d: "You choose what to list, what to charge and what shipping costs." },
-    { i: "bank", t: "Bank details later", d: "Connect your bank after your first sale. Your money waits for you." },
+    { i: "eye", t: "Sold stays on your page", d: "Sold pieces keep their spot with a sold mark, so fans see your stuff really goes." },
   ];
   const forFans = [
     "Secure checkout by Stripe",
