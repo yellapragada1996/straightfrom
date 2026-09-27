@@ -33,13 +33,16 @@ export default function Home() {
       <main className="flex-1">
         <Hero />
         <Ticker
-          label="Pieces creators have listed"
+          label="Things creators share with their fans"
           items={[
-            "The headset from 1,000 streams",
-            "The camera from the travel series",
-            "The mic from the charity stream",
-            "Polaroids from the last night in Tokyo",
-            "The chair from every stream",
+            "The mic from a streamer's first year",
+            "A guitar that did the whole tour",
+            "The camera behind the travel vlogs",
+            "A sketchbook full of doodles",
+            "The controller from the tournament run",
+            "Signed boxing gloves",
+            "The apron from the cooking channel",
+            "The board from the trick video",
           ]}
         />
         <Pieces />
