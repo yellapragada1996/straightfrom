@@ -35,12 +35,23 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   if (!hydrated) return <div className="min-h-dvh" aria-busy="true" />;
 
+  if (!state.signedIn) {
+    return (
+      <div className="mx-auto flex min-h-dvh max-w-md flex-col items-start justify-center gap-4 px-4">
+        <Link href="/"><Wordmark /></Link>
+        <h1 className="font-display text-4xl font-extrabold uppercase">You&apos;re signed out</h1>
+        <p className="text-ink-2">Sign in to get to your dashboard.</p>
+        <Btn href="/login" size="lg" iconRight="arrow">Sign in</Btn>
+      </div>
+    );
+  }
+
   if (!state.profile) {
     return (
       <div className="mx-auto flex min-h-dvh max-w-md flex-col items-start justify-center gap-4 px-4">
         <Wordmark />
         <h1 className="font-display text-4xl font-extrabold uppercase">Finish setting up</h1>
-        <p className="text-ink-2">Claim your link to open your dashboard.</p>
+        <p className="text-ink-2">Pick your link to open your dashboard.</p>
         <Btn href="/onboarding" size="lg" iconRight="arrow">Continue</Btn>
       </div>
     );
@@ -90,7 +101,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Icon name="external" className="size-[18px]" /> View my page
               </Link>
             )}
-            <button type="button" onClick={() => router.push("/login")} className="flex h-10 items-center gap-2.5 px-3 text-muted hover:bg-tile hover:text-ink">
+            <button
+              type="button"
+              onClick={() => {
+                creatorActions.signOut();
+                router.push("/");
+              }}
+              className="flex h-10 items-center gap-2.5 px-3 text-muted hover:bg-tile hover:text-ink">
               <Icon name="logout" className="size-[18px]" /> Sign out
             </button>
             <button

@@ -86,7 +86,10 @@ function SettingsForm({ profile, bankConnected }: { profile: Profile; bankConnec
           <Card className="flex flex-col gap-3">
             <h2 className="font-display text-lg font-extrabold uppercase">Account</h2>
             <p className="text-sm text-ink-2">Signed in as <b>{profile.email}</b>. We send sales, reminders and payout emails here.</p>
-            <Btn variant="outline" size="sm" icon="logout" className="self-start" onClick={() => router.push("/login")}>Sign out</Btn>
+            <Btn variant="outline" size="sm" icon="logout" className="self-start" onClick={() => {
+              creatorActions.signOut();
+              router.push("/");
+            }}>Sign out</Btn>
           </Card>
         </div>
 

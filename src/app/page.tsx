@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Wordmark } from "@/components/brand";
+import { ClosingSignIn, HeroCta, HomeHeaderActions } from "@/components/home/home-actions";
 import { HeroPhone } from "@/components/home/hero-phone";
 import { Icon, type IconName } from "@/components/icons";
 import { ItemCard } from "@/components/item-card";
@@ -64,12 +65,7 @@ function HomeHeader() {
           <a href="#how" className="hover:text-accent">How it works</a>
           <a href="#faq" className="hover:text-accent">FAQ</a>
         </nav>
-        <div className="flex items-center gap-1 md:gap-2">
-          <Link href="/login" className="inline-flex h-10 items-center px-2 text-[14px] font-semibold whitespace-nowrap hover:underline md:px-3 md:text-[15px]">Sign in</Link>
-          <Link href="/signup" className="inline-flex h-10 items-center bg-accent px-4 text-[14px] font-semibold whitespace-nowrap text-white hover:bg-accent-hover">
-            Sign up
-          </Link>
-        </div>
+        <HomeHeaderActions />
       </div>
     </header>
   );
@@ -96,11 +92,8 @@ function Hero() {
         <p className="mt-7 max-w-[540px] text-[17px] leading-relaxed text-ink-2 md:text-[19px]">
           The closest a fan can get is owning something that was yours. Put your things on one page and share it with the people who care most.
         </p>
-        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <SignUpButton />
-          <Link href="/login" className="text-[15px] font-semibold underline underline-offset-4 hover:text-accent">
-            I already have a page
-          </Link>
+        <div className="mt-8">
+          <HeroCta />
         </div>
       </div>
       <HeroPhone />
@@ -280,10 +273,8 @@ function FinalCta() {
           Your fans are already asking.
         </h2>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <SignUpButton />
-          <Link href="/login" className="text-[15px] font-semibold text-white underline underline-offset-4 hover:text-accent">
-            Sign in
-          </Link>
+          <HeroCta />
+          <ClosingSignIn />
         </div>
         <p className="text-[14px] text-[#9a9a9a]">
           Here for a creator? Tap the link in their bio to see their page.
@@ -293,13 +284,3 @@ function FinalCta() {
   );
 }
 
-function SignUpButton() {
-  return (
-    <Link
-      href="/signup"
-      className="inline-flex h-[60px] items-center gap-3 bg-accent px-7 font-display text-xl font-extrabold text-white uppercase hover:bg-accent-hover"
-    >
-      Sign up, it&apos;s free <Icon name="arrow" />
-    </Link>
-  );
-}

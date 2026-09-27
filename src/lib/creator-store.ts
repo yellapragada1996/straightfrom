@@ -56,6 +56,8 @@ export type CreatorState = {
   orders: CreatorOrder[];
   bank: { connected: boolean; last4?: string };
   bankCardDismissed: boolean;
+  /** Prototype session flag. Real app: the Supabase auth session. */
+  signedIn?: boolean;
 };
 
 const KEY = "sf-creator-v1";
@@ -121,6 +123,7 @@ function seedMaya(): CreatorState {
     ],
     bank: { connected: false },
     bankCardDismissed: false,
+    signedIn: false,
   };
 }
 
@@ -174,13 +177,16 @@ export const useCreatorState = () => useSyncExternalStore(subscribe, get, getSer
 export const creatorActions = {
   /** Brand-new creator from onboarding: empty shop. */
   startNew(profile: Profile) {
-    set(() => ({ version: 1, profile, products: [], orders: [], bank: { connected: false }, bankCardDismissed: false }));
+    set(() => ({ version: 1, profile, products: [], orders: [], bank: { connected: false }, bankCardDismissed: false, signedIn: true }));
   },
   signInAsSample() {
-    set(() => seedMaya());
+    set(() => ({ ...seedMaya(), signedIn: true }));
+  },
+  signOut() {
+    set((s) => ({ ...s, signedIn: false }));
   },
   resetPrototype() {
-    set(() => seedMaya());
+    set(() => ({ ...seedMaya(), signedIn: true }));
   },
   updateProfile(patch: Partial<Profile>) {
     set((s) => (s.profile ? { ...s, profile: { ...s.profile, ...patch } } : s));
@@ -247,3 +253,6 @@ export const slugify = (s: string) =>
   s.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "piece";
 
 export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+/** True when a creator is signed in (and has finished onboarding). */
+export const isCreatorSignedIn = (s: CreatorState) => !!s.signedIn && !!s.profile;
