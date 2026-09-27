@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* StraightFrom design tokens (Option C: light + red, with the creator's hand). */
+@theme {
+  --color-paper: #ffffff;
+  --color-ink: #0d0d0d;
+  --color-ink-2: #333333;
+  --color-muted: #6b6b6b;
+  --color-line: #e4e4e4;
+  --color-tile: #f1f1f1;
+  --color-soft: #f6f6f4;
+  --color-accent: #e0201b;
+  --color-accent-hover: #c01813;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --animate-ticker: ticker 26s linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @keyframes ticker {
+    to { transform: translateX(-50%); }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --font-sans: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+  --font-hand: var(--font-caveat), "Bradley Hand", cursive;
 }
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--color-ink); color: #fff; }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Hand-drawn marks: red "pen" strokes that can draw themselves in. */
+@layer components {
+  .scribble {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .scribble path { vector-effect: non-scaling-stroke; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scribble-draw path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 0.9s 0.35s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+  }
+  .scribble-draw.late path { animation-delay: 0.7s; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker, .animate-rise { animation: none; }
+}
+@keyframes draw { to { stroke-dashoffset: 0; } }

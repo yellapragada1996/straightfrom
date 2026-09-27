@@ -1,0 +1,191 @@
+import type { Creator, Product } from "./types";
+
+// Sample content for the prototype. Creators and items are made up;
+// photos are Unsplash images used for this mockup only.
+
+const photo = (id: string, w = 1200) =>
+  `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&h=${Math.round(w * 1.25)}&q=75`;
+const avatar = (id: string) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=400&h=400&q=75`;
+
+export const creators: Creator[] = [
+  {
+    id: "c_maya",
+    handle: "mayaokafor",
+    displayName: "Maya Okafor",
+    bio: "Travel vlogger. Everything here came along on a trip you watched, and now it can be yours.",
+    avatarUrl: avatar("1580489944761-15a19d654956"),
+    socialLinks: { youtube: "#", instagram: "#", tiktok: "#" },
+    payoutsEnabled: false,
+    hidden: false,
+  },
+  {
+    id: "c_theo",
+    handle: "theoplays",
+    displayName: "Theo Vance",
+    bio: "Variety streamer, five nights a week. The gear from the streams you were there for.",
+    avatarUrl: avatar("1763575647968-596f7bd30822"),
+    socialLinks: { twitch: "#", youtube: "#", x: "#" },
+    payoutsEnabled: true,
+    hidden: false,
+  },
+];
+
+export const products: Product[] = [
+  {
+    id: "p_rain_jacket",
+    creatorId: "c_maya",
+    slug: "rain-jacket-japan-vlog",
+    title: "The rain jacket from the Japan vlog",
+    description:
+      "Bought this the morning it poured in Kyoto and basically never took it off. It's in almost every shot of the Japan vlog. Size M. There's a tiny scuff on the left cuff from the Fushimi Inari steps. It deserves more adventures than my wardrobe can give it.",
+    priceCents: 18000,
+    shippingCents: 1500,
+    quantity: 1,
+    status: "available",
+    images: [
+      photo("1622630893218-52686fbdde23"),
+      photo("1527192250228-1ece59813102"),
+      photo("1635968691555-cb542a102cc9"),
+      photo("1622630982116-33931c755f94"),
+    ],
+    createdAt: "2026-09-24",
+  },
+  {
+    id: "p_qa_hoodie",
+    creatorId: "c_maya",
+    slug: "qa-hoodie",
+    title: "The hoodie from every Q&A",
+    description:
+      "If you've watched a single Q&A, you've seen this hoodie. It's been on camera for every one of them since 2022. Size L, oversized on me.",
+    priceCents: 9500,
+    shippingCents: 1200,
+    quantity: 1,
+    status: "available",
+    images: [photo("1556821840-3a63f95609a7")],
+    createdAt: "2026-09-20",
+  },
+  {
+    id: "p_iceland_boots",
+    creatorId: "c_maya",
+    slug: "iceland-boots",
+    title: "The boots from the Iceland series",
+    description:
+      "These walked every trail you watched in the Iceland series, plus one very muddy week in Scotland. Resoled once. Women's US 8.",
+    priceCents: 12000,
+    shippingCents: 1800,
+    quantity: 1,
+    status: "available",
+    images: [photo("1575987116913-e96e7d490b8a")],
+    createdAt: "2026-09-18",
+  },
+  {
+    id: "p_portugal_denim",
+    creatorId: "c_maya",
+    slug: "portugal-denim-jacket",
+    title: "The denim jacket from the Portugal series",
+    description:
+      "Found it at a market in Porto on day one and wore it through the whole Portugal series. You probably know it from the thumbnail. Size S, fits like an M.",
+    priceCents: 15000,
+    shippingCents: 1500,
+    quantity: 1,
+    status: "available",
+    images: [photo("1611312449408-fcece27cdbb7")],
+    createdAt: "2026-09-15",
+  },
+  {
+    id: "p_tokyo_polaroid",
+    creatorId: "c_maya",
+    slug: "signed-tokyo-polaroid",
+    title: "A signed polaroid from the last night in Tokyo",
+    description:
+      "I shot a whole pack on our last night in Tokyo. Three are left. Each one is signed on the back, and you'll get one at random.",
+    priceCents: 3500,
+    shippingCents: 500,
+    quantity: 3,
+    status: "available",
+    images: [photo("1569100922300-119f061159ea")],
+    createdAt: "2026-09-12",
+  },
+  {
+    id: "p_film_camera",
+    creatorId: "c_maya",
+    slug: "film-camera",
+    title: "The camera behind my film photos",
+    description: "Every film photo on my Instagram was shot on this.",
+    priceCents: 24000,
+    shippingCents: 1500,
+    quantity: 0,
+    status: "sold_out",
+    images: [photo("1491796014055-e6835cdcd4c6")],
+    createdAt: "2026-08-30",
+  },
+  {
+    id: "p_lisbon_tote",
+    creatorId: "c_maya",
+    slug: "lisbon-tote",
+    title: "The tote from the Lisbon vlog",
+    description: "Carried it every single day of the Lisbon vlog.",
+    priceCents: 4500,
+    shippingCents: 800,
+    quantity: 0,
+    status: "sold_out",
+    images: [photo("1548863227-3af567fc3b27")],
+    createdAt: "2026-08-20",
+  },
+  {
+    id: "p_ring_light",
+    creatorId: "c_maya",
+    slug: "first-ring-light",
+    title: "The ring light from my first 100 videos",
+    description: "Every video from my first year was lit by this.",
+    priceCents: 6000,
+    shippingCents: 2000,
+    quantity: 0,
+    status: "sold_out",
+    images: [photo("1673196649671-eb09066ad6c1")],
+    createdAt: "2026-08-10",
+  },
+  {
+    id: "p_theo_headset",
+    creatorId: "c_theo",
+    slug: "first-1000-streams-headset",
+    title: "The headset from my first 1,000 streams",
+    description:
+      "Every stream from 2021 to 2024 went through these. The left cushion has a dent from four years of me leaning on my hand. Works perfectly.",
+    priceCents: 16000,
+    shippingCents: 1500,
+    quantity: 1,
+    status: "available",
+    images: [photo("1610041321327-b794c052db27")],
+    createdAt: "2026-09-22",
+  },
+  {
+    id: "p_theo_mic",
+    creatorId: "c_theo",
+    slug: "charity-stream-mic",
+    title: "The mic from the charity stream",
+    description: "The 31-hour charity stream, every word of it, went through this mic. Comes with the stand.",
+    priceCents: 14000,
+    shippingCents: 1800,
+    quantity: 1,
+    status: "available",
+    images: [photo("1590602847861-f357a9332bbc")],
+    createdAt: "2026-09-19",
+  },
+  {
+    id: "p_theo_keyboard",
+    creatorId: "c_theo",
+    slug: "24-hour-stream-keyboard",
+    title: "The keyboard from the 24-hour stream",
+    description: "Survived the 24-hour stream, one spilled energy drink, and a lot of rage. The orange keycaps are custom.",
+    priceCents: 12000,
+    shippingCents: 1500,
+    quantity: 0,
+    status: "sold_out",
+    images: [photo("1618384887929-16ec33fab9ef")],
+    createdAt: "2026-09-01",
+  },
+];
+
+/** Countries fans can ship to at launch (open question in spec §13). */
+export const SHIPS_TO = ["United States", "Canada"] as const;
