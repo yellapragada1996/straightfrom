@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { creatorActions } from "@/lib/creator-store";
 import { Wordmark } from "../brand";
+import { GoogleButton, OrDivider } from "../google-button";
 import { Icon } from "../icons";
 import { Underline } from "../scribbles";
 import { Btn, Field, inputCls } from "./ui";
@@ -72,9 +73,22 @@ export function LoginForm({ mode = "signin" }: { mode?: "signup" | "signin" }) {
           {!sent ? (
             <form onSubmit={submit} className="flex flex-col gap-4">
               <h2 className="font-display text-2xl font-extrabold tracking-tight uppercase">{signup ? "Create your page" : "Welcome back"}</h2>
-              <p className="-mt-2 text-sm text-muted">
-                {signup ? "Enter your email and we'll send you a link to get started. No password needed." : "Enter your email and we'll send you a sign-in link."}
-              </p>
+              <p className="-mt-2 text-sm text-muted">{signup ? "It takes about 2 minutes. No password needed." : "Sign in with Google or your email."}</p>
+              <GoogleButton
+                onSuccess={() => {
+                  // Prototype: signing up with Google starts onboarding; signing in opens Maya's sample dashboard.
+                  if (signup) {
+                    try {
+                      sessionStorage.setItem(PENDING_EMAIL_KEY, "you@gmail.com");
+                    } catch {}
+                    router.push("/onboarding");
+                  } else {
+                    creatorActions.signInAsSample();
+                    router.push("/dashboard");
+                  }
+                }}
+              />
+              <OrDivider />
               <Field label="Email" htmlFor="email">
                 <input
                   id="email"

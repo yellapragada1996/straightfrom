@@ -7,6 +7,7 @@ import { useHydrated } from "@/lib/cart";
 import { fmtDate } from "@/lib/creator-store";
 import { fanActions, ordersFor, useFanState, type FanOrder } from "@/lib/fan-store";
 import { money } from "@/lib/format";
+import { GoogleButton, OrDivider } from "../google-button";
 import { Icon } from "../icons";
 import { RingAvatar } from "../ring-avatar";
 import { Underline } from "../scribbles";
@@ -66,6 +67,12 @@ export function FanSignIn({ presetEmail = "", compact = false }: { presetEmail?:
             orders show up.
           </p>
         </div>
+      )}
+      {!compact && (
+        <>
+          <GoogleButton onSuccess={() => fanActions.signIn("sam.fan@example.com")} />
+          <OrDivider />
+        </>
       )}
       <label className="block">
         <span className="mb-1.5 block text-[13px] font-semibold">Email</span>
