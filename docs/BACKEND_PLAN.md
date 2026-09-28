@@ -60,7 +60,7 @@ These keep the numbers right and the build fast.
 
 1. **Money is always whole cents (integers).** Never floats, never strings. Formatting (`$77.06`) happens only at display time with `money()`.
 2. **The server is the only source of truth for prices, fees and totals.** The browser sends product ids and quantities. The server looks up prices and computes everything again.
-3. **Snapshot at purchase.** When an order is paid we save the item prices, shipping, fee rate, fee amount and creator payout **on the order**. Later edits to prices or fees never change past orders.
+3. **Snapshot at purchase.** When an order is placed we save the item prices, shipping, fee rate and fee amount **on the order**. When the payment succeeds we add Stripe's actual fee and the final creator payout. Later edits to prices or fees never change past orders.
 4. **Balances are calculated, never stored as running totals.** The dashboard's "$77.06 is ready for you!" is not typed into the page, and it won't be stored in a `balance` column either. A running total can drift out of sync with orders. Instead:
    - each order stores its own `payout_cents` (snapshot, rule 3);
    - one function, `getCreatorBalances(creatorId)`, adds them up with SQL by status;
@@ -103,7 +103,7 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 | **"ending 4821"** bank | `creator-store.ts:221` (fake) | Real last 4 from Stripe (`creators.bank_last4`) |
 | `hello@straightfrom.co` | `app/page.tsx:252` | `SUPPORT_EMAIL` |
 | `admin@straightfrom.co` | `admin-shell.tsx:69,143` | `ADMIN_EMAIL` env var (secret list, never shown to visitors) |
-| Stripe card fee 2.9% + 30¢ (estimate) | `lib/fees.ts` | Gone. We store the **actual** Stripe fee per order from Stripe (§7). |
+| Stripe card fee 2.9% + 30¢ (estimate) | `lib/fees.ts` (`stripeFeeEstimate`), admin prototype | **Deleted. Never hardcoded or estimated.** Stripe's exact fee is read from Stripe for every payment and taken from the order amount (§7). |
 | "Takes about 5 minutes" / "2 minutes" | dashboard, earnings copy | Fine to leave as copy (marketing estimates, not rules). |
 
 **Also delete (prototype-only):** every "Prototype: …" button and note, the fake Stripe dialog, "fill test details", the decline-card hint, "reset sample data", and the fake order id generator.
@@ -287,8 +287,8 @@ report_target:   item | creator
 | total_cents | int | items + shipping (what the fan paid) |
 | fee_bps | int | **snapshot of the rate** at purchase |
 | fee_cents | int | round(items × fee_bps / 10000) |
-| payout_cents | int | items − fee + shipping |
-| stripe_fee_cents | int null | **actual** Stripe fee from the charge's balance transaction |
+| payout_cents | int null | total − our fee − Stripe's fee. Set when the payment succeeds (§7); empty until Stripe reports its fee. |
+| stripe_fee_cents | int null | Stripe's **exact** fee from the charge's balance transaction (never estimated) |
 | stripe_payment_intent_id | text unique | |
 | stripe_charge_id | text null | needed as `source_transaction` for the payout |
 | stripe_transfer_id | text null | set when paid out |
@@ -343,30 +343,71 @@ There is **no fans table**. A fan account is a Supabase auth user with no `creat
 
 ## 7. Money: formulas, snapshots and balances
 
-All in `src/server/money.ts`, with unit tests. `src/lib/fees.ts` keeps the pure helpers (`feeFor`, `creatorEarns`, `fmtFee`) that the item editor's "You'll earn" preview uses, so preview and real maths are the same code.
+All in `src/server/money.ts`, with unit tests.
 
-### At purchase (inside the checkout action, §9)
+### Decided: both fees come out of what the fan pays
+
+**The fan pays the order total. Our platform fee and Stripe's processing fee are both taken from that amount, and the creator gets the rest.** The fan never pays anything extra.
+
+> Example: the fan pays **$100** ($80 item + $20 shipping).
+> - Our fee: 4.9% of the $80 item = **$3.92**.
+> - Stripe's fee: **whatever Stripe charges on that $100** (for example $3.20).
+> - The creator gets $100 − $3.92 − $3.20 = **$92.88**.
+
+**Stripe's fee is never hardcoded or estimated in code.** We read the exact amount from Stripe for every payment: the `fee` on the charge's balance transaction. Stripe's rates differ by card type (international cards, Amex…) and can change, so any typed-in "2.9% + 30¢" would drift. The prototype's `stripeFeeEstimate()` in `lib/fees.ts` exists only for fake data and is deleted.
+
+### Step 1: at purchase (inside the checkout action, §9)
 
 ```
 items_cents    = Σ (price_cents × quantity)            for the lines in the cart
 shipping_cents = max(shipping_cents of those products)  (you only pay shipping once)
-total_cents    = items_cents + shipping_cents
+total_cents    = items_cents + shipping_cents            (what the fan pays)
 fee_bps        = creator.fee_bps ?? platform_settings.fee_bps
-fee_cents      = round(items_cents × fee_bps / 10000)   (fee is on items only)
-payout_cents   = items_cents − fee_cents + shipping_cents
+fee_cents      = round(items_cents × fee_bps / 10000)   (our fee: on the item price only)
 ```
 
-All of these are saved on the order.
+These are saved on the order. `payout_cents` is **not** known yet, because Stripe's fee isn't known until the payment succeeds.
 
-### After payment
-
-`stripe_fee_cents` = the charge's balance transaction `fee`. It's the real number, used for admin's "We keep":
+### Step 2: when the payment succeeds (webhook, §11)
 
 ```
-we_keep = Σ fee_cents        (shipped or paid-out orders; unshipped ones may still refund)
-        − Σ stripe_fee_cents (every charged order, refunded too; Stripe keeps its fee on refunds)
-        − Σ we_covered_cents (refunds/disputes after payout that we paid)
+stripe_fee_cents = charge.balance_transaction.fee      (from Stripe, exact)
+payout_cents     = total_cents − fee_cents − stripe_fee_cents
 ```
+
+- Both are saved on the order. From then on `payout_cents` is final, and every screen, email and payout uses it.
+- **The balance transaction must be in USD** (§10 setup item 2 makes our balance USD). If Stripe ever returns another currency, the order is flagged on admin Home instead of being paid out with a wrong number.
+- If Stripe hasn't attached the balance transaction yet (rare), the order is still marked paid with `payout_cents` empty. The hourly `fillStripeFees` job fills both in.
+- **Nothing waits on a missing fee by guessing:** E4 ("Someone ordered", which states the exact amount) is queued only once `payout_cents` is known, and the payout job skips orders without it.
+
+### Before a sale: the "You'll earn" preview
+
+The item editor can't know Stripe's fee before a sale happens, and we won't fake it. So the preview shows:
+
+```
+Price                                   $80.00
+StraightFrom fee (4.9%)                 −$3.92
+Shipping (yours)                        +$20.00
+Card processing (Stripe)                taken from each sale; exact amount shown on the order
+You'll earn, before card processing     $96.08
+```
+
+After a sale, the order, Earnings and E4 all show the exact amount.
+
+### Refunds and Stripe's fee
+
+- On a refund the fan gets the **full** amount back, and the creator gets nothing for that order.
+- **Stripe keeps its fee on refunds.** With no sale left to take it from, we absorb it in the MVP (it shows in "We keep").
+
+### Our numbers ("We keep" on admin Home)
+
+```
+we_keep = Σ fee_cents                     (shipped or paid-out orders; unshipped ones may still refund)
+        − Σ stripe_fee_cents of refunded orders   (Stripe kept it and there was no sale to take it from)
+        − Σ we_covered_cents              (refunds/disputes after payout that we paid)
+```
+
+On normal orders Stripe's fee comes out of the creator's share, so it doesn't reduce ours. A 0% creator costs us nothing per sale.
 
 Not included: Connect's own costs (a monthly fee per active creator account, per-payout and cross-border fees). Check them in Stripe's dashboard monthly, and against current Connect pricing before agreeing to more 0% deals (§22).
 
@@ -400,7 +441,7 @@ It returns the **same field names the prototype's `balances()` uses today**, so 
 | `paidOutCents` | sent to their bank | Dashboard and Earnings "Paid out" |
 | `totalEarnedCents` | everything except refunds | Earnings "Total earned" |
 
-Emails ("Someone ordered: you'll earn $X") use the order's own `payout_cents`, and any balance they mention comes from the same function.
+Emails ("Someone ordered: you'll earn $X") use the order's own final `payout_cents` (after Stripe's fee), and any balance they mention comes from the same function. Orders whose `payout_cents` isn't known yet are left out of the sums for the moment (it's filled in within the hour).
 
 **Rounding:** fee uses standard rounding of integer cents, done once per order (not per item), so totals always add up exactly.
 
@@ -557,7 +598,8 @@ Pays orders that are:
 - `shipped`,
 - with `shipped_at` at least `PAYOUT_DELAY_DAYS` ago,
 - from a creator whose `stripe_status` is `active` and whose page is **not hidden**,
-- with no open chargeback.
+- with no open chargeback,
+- with `payout_cents` known (Stripe's fee recorded).
 
 For each order:
 1. **Look before creating.** List transfers for `transfer_group = order.id`. If one exists (we crashed after Stripe succeeded last time), just record it.
@@ -606,7 +648,7 @@ Two endpoints: `/api/stripe/webhook` (our account) and `/api/stripe/connect-webh
 
 | Event | What we do |
 |---|---|
-| `payment_intent.succeeded` | Order `pending → paid`. Set `paid_at`, `stripe_charge_id`, `stripe_fee_cents` (from the charge's balance transaction; if Stripe hasn't attached it yet, leave it empty and the hourly job fills it in). Subtract units, set `sold_out` + `sold_at` at zero, delete the order's holds, add a `paid` event, and queue E3 + E4. If the holds had expired and there isn't enough stock left: set the order straight to `refunding` (reason "Sold to someone else while you were paying") instead of `paid`, and after the commit run the rest of `refundOrder`; if that crashes, the hourly `finishRefunds` completes it. |
+| `payment_intent.succeeded` | Order `pending → paid`. Set `paid_at` and `stripe_charge_id`. Read Stripe's exact fee from the charge's balance transaction and set `stripe_fee_cents` and `payout_cents = total − our fee − Stripe fee` (§7). If Stripe hasn't attached the fee yet, leave both empty for the hourly job. Subtract units, set `sold_out` + `sold_at` at zero, delete the order's holds, add a `paid` event, queue E3, and queue E4 once `payout_cents` is known. If the holds had expired and there isn't enough stock left: set the order straight to `refunding` (reason "Sold to someone else while you were paying") instead of `paid`, and after the commit run the rest of `refundOrder`; if that crashes, the hourly `finishRefunds` completes it. |
 | `payment_intent.payment_failed` | Nothing (the fan sees the error on the page). |
 | `charge.refunded` | Someone refunded in the Stripe dashboard directly: mark the order refunded (same steps as `refundOrder`, minus the Stripe call). |
 | `charge.dispute.created` / `.closed` | §10. |
@@ -632,7 +674,7 @@ Vercel **Pro** (required anyway: §4) lets us run the cron **hourly**. One route
 | 4. `shipReminder` | `paid` orders whose ship-by is within `SHIP_REMINDER_DAYS_BEFORE` days, and `ship_reminder_sent_at` is empty | queue E8, set `ship_reminder_sent_at` |
 | 5. `cleanupPending` | `pending` orders whose hold has expired | cancel the PaymentIntent in Stripe **first**; only if Stripe confirms, mark the order canceled and delete its holds. If Stripe says it already succeeded, leave it for the webhook. |
 | 6. `sendEmails` | outbox rows not sent yet (fewer than 5 tries) | send them (§13) |
-| 7. `fillStripeFees` | paid orders with an empty `stripe_fee_cents` | fetch the fee from Stripe |
+| 7. `fillStripeFees` | paid orders with an empty `stripe_fee_cents` | read Stripe's exact fee, set `payout_cents`, queue E4 if it hasn't been sent |
 | 8. `privacyCleanup` | canceled orders older than 7 days | erase their name, email and address |
 
 **Ship-by time** is the end of the day (11:59 pm), `SHIP_DEADLINE_DAYS` days after payment (plus any admin extension), **in the creator's time zone**. We save their browser's time zone at onboarding, so "Ship by Oct 2" means the whole of Oct 2 for them.
@@ -657,7 +699,7 @@ A failed email never undoes a payment or a refund. This matters most for E4: it'
 | E1 | Creator or fan | **Your sign-up code** | they sign up with email + password (and "Resend code") | 6-digit code (`{{ .Token }}`), expires in 10 minutes. Supabase *Confirm signup* template. |
 | E2 | Creator or fan | **Your password reset code** | "Forgot password?" | 6-digit code. Supabase *Reset password* template. |
 | E3 | Fan | **Order confirmed** | payment succeeds (webhook) | order code, items with photos, subtotal/shipping/total, "straight from @handle", ship-to address, "ships within `SHIP_DEADLINE_DAYS` days or you're refunded automatically", link to create an account (pre-filled email) |
-| E4 | Creator | **Someone ordered** | payment succeeds (webhook) | items, **you'll earn `payout_cents`**, fan's name and ship-to address, ship-by date, "Add tracking" button → `/dashboard/orders`. If no bank connected: a "Connect your bank to get paid" block (this replaces separate bank reminders). |
+| E4 | Creator | **Someone ordered** | payment succeeds and Stripe's fee is known (normally the same moment) | items, **you'll earn `payout_cents`** (exact, after our fee and Stripe's fee, with both shown), fan's name and ship-to address, ship-by date, "Add tracking" button → `/dashboard/orders`. If no bank connected: a "Connect your bank to get paid" block (this replaces separate bank reminders). |
 | E5 | Fan | **Your item shipped** | creator (or admin) adds tracking | carrier, tracking number, **Track package** link (`CARRIERS[].track`; "Other" shows the number only), creator. Sent again if the tracking is changed later. |
 | E6 | Fan | **You've been refunded** | any refund (auto, admin, or the sold-while-paying edge case) | amount, reason in plain words, "back on your card in 5–10 business days" |
 | E7 | Creator | **Order refunded** | auto-refund (not shipped in time) or admin refund | item, amount, reason, "the item is back in your drafts; list it again anytime" |
@@ -708,7 +750,7 @@ A failed email never undoes a payment or a refund. This matters most for E4: it'
 | `/onboarding` | `checkHandle()` while typing | `completeOnboarding()` | Claims a pending fee rate. |
 | `/dashboard` | profile, `getCreatorBalances()`, orders to ship, live item count | `dismissBankCard()` | |
 | `/dashboard/items` | creator's products (all statuses) | `setProductStatus()`, `deleteDraft()` | |
-| `/dashboard/items/new`, `/[id]` | product + images, **effective fee rate** | `createUploadUrl()`, `saveProduct()` | "You'll earn" uses the creator's rate from the DB. |
+| `/dashboard/items/new`, `/[id]` | product + images, **effective fee rate** | `createUploadUrl()`, `saveProduct()` | "You'll earn" uses the creator's rate from the DB and is labelled *before card processing*; no Stripe fee is guessed (§7). |
 | `/dashboard/orders` | creator's orders with items and ship-to | `markShipped()`, `updateTracking()` | |
 | `/dashboard/earnings` | `getCreatorBalances()`, per-order payout list, `stripe_status` | `startConnectOnboarding(country)`, `openStripeDashboard()` | Fee line reads the creator's effective rate. Bank card shows the 4 Stripe states (§10). |
 | `/dashboard/settings` | profile, bank status, live feed | `updateProfile()`, avatar upload, `signOut()` | Handle is read-only (already built). |
@@ -792,7 +834,7 @@ Every admin query and action starts with `requireAdmin()`. Every admin action wr
 **Admin reads** (`server/queries/admin.ts`) reproduce the prototype's derived helpers, now as SQL:
 - `needsAttention()`: open disputes, `paid` orders within 2 days of ship-by, failed Connect payouts, orders stuck in `refunding`, a failed job run, emails that failed 5 times, and "we covered $X" events;
 - open reports;
-- Home numbers (creators, orders this week, sales, **we keep** from real Stripe fees), plus **owed to creators** (so we never withdraw creator money from Stripe by mistake, §10);
+- Home numbers (creators, orders this week, sales, **we keep** per §7), plus **owed to creators** (so we never withdraw creator money from Stripe by mistake, §10);
 - `creatorsToNudge()`: next step per creator (no live item → no sale → no bank). Same logic as `creatorNextStep()`;
 - lists with search (name/handle/email prefix, order code, fan email).
 
@@ -833,7 +875,9 @@ Every admin query and action starts with `requireAdmin()`. Every admin action wr
 | `lib/local-store.ts` | deleted |
 | `lib/cart.tsx` | stays (browser cart of ids); `buildCart` → `getCheckoutLines` |
 | `lib/cart-view-model.ts` | server version of the same maths |
-| `lib/fees.ts` | pure helpers stay; defaults move to config/DB; Stripe estimate removed |
+| `lib/fees.ts` | `feeFor`/`fmtFee` stay; `creatorEarns` becomes "before card processing"; defaults move to config/DB; `stripeFeeEstimate` deleted |
+| `creator/item-editor.tsx` | "You'll earn" box: add the "Card processing (Stripe): taken from each sale" line and the "before card processing" label (§7) |
+| `creator/orders-view.tsx`, `creator/earnings-view.tsx`, `admin/orders.tsx` | per-order breakdown gains a "Stripe fee" line with the exact amount; totals use the final `payout_cents` |
 | `components/checkout-view.tsx` | card fields → Payment Element; submit → `startCheckout` |
 | `components/creator/earnings-view.tsx` | `StripeDialog` → country question + real Connect redirect; bank card shows the 4 Stripe states; payout copy says "sent" (§10) |
 | `components/buy-box.tsx`, `lib/cart-view-model.ts`, `creator/items-list.tsx`, `creator/dashboard-home.tsx`, `lib/types.ts` | "reserved" comes from active holds, not a stored status (§6) |
@@ -911,7 +955,7 @@ Each phase ends with a working, testable slice. We present a short plan before e
 
 ## 21. Testing
 
-- **Unit tests (Vitest):** `money.ts` (fees, rounding, 0% rate, multi-item shipping), `getCreatorBalances` mapping, handle rules, `creatorNextStep`, carrier URLs.
+- **Unit tests (Vitest):** `money.ts` (fees, rounding, 0% rate, multi-item shipping, payout = total − our fee − Stripe fee, missing fee → no payout), `getCreatorBalances` mapping, handle rules, `creatorNextStep`, carrier URLs.
 - **Integration tests** against a local Supabase (`supabase start`):
   - checkout reservation race (two parallel `startCheckout` for the last unit);
   - webhook idempotency (send the same event twice);
@@ -931,7 +975,7 @@ My recommendation is in the right-hand column. These are the "values" to settle 
 | Value | Prototype uses | Recommendation |
 |---|---|---|
 | Platform fee | 4.9% (decided) | Keep. |
-| **Who pays Stripe's card fee** (≈2.9% + 30¢) | We do (admin shows "We keep" going negative with 0% creators) | **DECIDE.** Options: (a) we absorb it (simple, costly at 4.9%); (b) creator pays it on top of our fee; (c) we absorb it except for 0% creators, who pay Stripe's fee. I lean (c). Also check Connect's per-account and payout fees before more 0% deals. |
+| **Who pays Stripe's card fee** | — | **Decided:** it comes out of the order amount, like our fee; the creator gets the rest. Read exactly from Stripe per payment, never hardcoded (§7). On refunds we absorb it. Still check Connect's per-account and payout fees before more 0% deals. |
 | Days to ship before auto-refund | 7 | Keep 7. |
 | Days after shipping before payout | 7 | Keep 7. It guarantees "never shipped" orders refund before any payout. It does **not** protect against disputes weeks later (§10). |
 | Checkout hold | 30 min | **15 min.** With our own page the fan is already at the Pay step when the hold starts. |
