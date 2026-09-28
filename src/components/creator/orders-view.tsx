@@ -13,6 +13,7 @@ import {
   type CarrierKey,
   type CreatorOrder,
 } from "@/lib/creator-store";
+import { trackingUrl } from "@/lib/carriers";
 import { money } from "@/lib/format";
 import { Icon } from "../icons";
 import { Btn, CopyButton, Field, inputCls, PageTitle, StatusPill, Tabs, useToast } from "./ui";
@@ -180,7 +181,7 @@ function TrackingForm({ order: o, initial, onDone }: { order: CreatorOrder; init
 function ShippedInfo({ order: o }: { order: CreatorOrder }) {
   const [editing, setEditing] = useState(false);
   const c = CARRIERS.find((x) => x.key === o.carrier);
-  const url = c?.track && o.tracking ? c.track(o.tracking) : null;
+  const url = o.carrier && o.tracking ? trackingUrl(o.carrier, o.tracking) : null;
   const first = o.fan.name.split(" ")[0];
 
   if (editing && o.carrier && o.tracking) {

@@ -1,7 +1,8 @@
 "use client";
 
 import { CARRIERS, type CarrierKey, type CreatorOrder, type OrderStatus } from "./creator-store";
-import { DEFAULT_FEE_BPS, feeFor, PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS, stripeFeeEstimate } from "./fees";
+import { PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS } from "@/config";
+import { DEFAULT_FEE_BPS, feeFor, stripeFeeEstimate } from "./fees";
 import { createLocalStore } from "./local-store";
 import { creators as sampleCreators, products as sampleProducts } from "./mock-data";
 import type { Product } from "./types";

@@ -9,6 +9,7 @@ import type { Product } from "@/lib/types";
 import { CartConflictDialog } from "./cart-conflict-dialog";
 import { Icon } from "./icons";
 import { Circled } from "./scribbles";
+import { days, RESERVATION_MINUTES, SHIP_DEADLINE_DAYS } from "@/config";
 
 type Props = { product: Product; handle: string; first: string; shipsTo: string };
 
@@ -113,7 +114,7 @@ export function BuyBox({ product, handle, first, shipsTo }: Props) {
         )}
         {state === "reserved" ? (
           <p className="bg-[#fff4f3] px-3.5 py-3 text-sm leading-relaxed text-ink-2">
-            Someone is paying for this right now. If they don&apos;t finish, it&apos;s back on sale within 30 minutes.
+            Someone is paying for this right now. If they don&apos;t finish, it&apos;s back on sale within {RESERVATION_MINUTES} minutes.
           </p>
         ) : (
           <p className="text-[13px] text-muted">
@@ -128,7 +129,7 @@ export function BuyBox({ product, handle, first, shipsTo }: Props) {
         <div>
           <b className="block text-[15px] font-bold">Protected purchase</b>
           <span className="text-[13.5px] leading-relaxed text-ink-2">
-            {first} has 7 days to ship it, or you&apos;re refunded automatically. Secure checkout by Stripe, no account needed.
+            {first} has {days(SHIP_DEADLINE_DAYS)} to ship it, or you&apos;re refunded automatically. Secure checkout by Stripe, no account needed.
           </span>
         </div>
       </div>

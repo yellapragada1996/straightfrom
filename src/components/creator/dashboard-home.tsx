@@ -8,6 +8,7 @@ import { money } from "@/lib/format";
 import { Icon } from "../icons";
 import { usePublicPageHref } from "./dashboard-shell";
 import { Btn, Card, CopyButton, PageTitle, StatusPill } from "./ui";
+import { days, SHIP_DEADLINE_DAYS } from "@/config";
 
 export function DashboardHome() {
   const s = useCreatorState();
@@ -106,7 +107,7 @@ export function DashboardHome() {
           )}
           {toShip.length > 0 && (
             <p className="mt-2 text-[13px] text-muted">
-              Orders not shipped within 7 days are refunded to the fan automatically.
+              Orders not shipped within {days(SHIP_DEADLINE_DAYS)} are refunded to the fan automatically.
             </p>
           )}
         </Card>

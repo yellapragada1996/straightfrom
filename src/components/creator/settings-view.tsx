@@ -10,8 +10,8 @@ import { PagePreview } from "./page-preview";
 import { AvatarPicker } from "./photo-uploader";
 import { cleanSocialLinks, SocialLinksEditor } from "./social-links-editor";
 import { Btn, Card, CopyButton, Field, inputCls, PageTitle, useToast } from "./ui";
+import { BIO_MAX } from "@/config";
 
-const BIO_MAX = 160;
 
 /** Order-independent comparison, so the save bar only appears after a real edit. */
 const fingerprint = (p: Profile) =>

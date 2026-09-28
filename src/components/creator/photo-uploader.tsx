@@ -5,8 +5,8 @@
 import { useRef, useState } from "react";
 import { resizeImage } from "@/lib/image-resize";
 import { Icon } from "../icons";
+import { MAX_PHOTOS } from "@/config";
 
-export const MAX_PHOTOS = 8;
 
 /**
  * 1–8 photos. First one is the cover. Reorder by dragging (desktop) or the

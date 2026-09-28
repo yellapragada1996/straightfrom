@@ -11,11 +11,10 @@ import { useFeeBps } from "@/lib/platform-store";
 import { firstSentence, money } from "@/lib/format";
 import type { Product } from "@/lib/types";
 import { Icon } from "../icons";
-import { MAX_PHOTOS, PhotoUploader } from "./photo-uploader";
+import { PhotoUploader } from "./photo-uploader";
 import { Btn, Card, Field, inputCls, useToast } from "./ui";
+import { days, DEFAULT_SHIPPING_CENTS, MAX_PHOTOS, MIN_PRICE_CENTS, PAYOUT_DELAY_DAYS, STORY_MAX } from "@/config";
 
-const DEFAULT_SHIPPING = 2000; // pre-filled suggestion, creator can change it
-const STORY_MAX = 1000;
 
 const toCents = (v: string) => Math.round(parseFloat(v.replace(/[^0-9.]/g, "")) * 100) || 0;
 const toDollars = (c: number) => (c ? (c / 100).toString() : "");
@@ -45,7 +44,7 @@ function EditorForm({ existing, handle, creatorId }: { existing?: Product; handl
   const [title, setTitle] = useState(existing?.title ?? "");
   const [story, setStory] = useState(existing?.description ?? "");
   const [price, setPrice] = useState(toDollars(existing?.priceCents ?? 0));
-  const [shipping, setShipping] = useState(toDollars(existing?.shippingCents ?? DEFAULT_SHIPPING));
+  const [shipping, setShipping] = useState(toDollars(existing?.shippingCents ?? DEFAULT_SHIPPING_CENTS));
   const [quantity, setQuantity] = useState(existing?.quantity ?? 1);
   const [showAdvanced, setShowAdvanced] = useState((existing?.quantity ?? 1) > 1);
   const [tried, setTried] = useState(false);
@@ -55,7 +54,7 @@ function EditorForm({ existing, handle, creatorId }: { existing?: Product; handl
   const errors = {
     photos: photos.length === 0 ? "Add at least one photo." : null,
     title: !title.trim() ? "Give it a title." : null,
-    price: priceC < 100 ? "Set a price of at least $1." : null,
+    price: priceC < MIN_PRICE_CENTS ? `Set a price of at least ${money(MIN_PRICE_CENTS)}.` : null,
     shipping: shipping.trim() === "" ? "Set a shipping price (it can be $0)." : null,
   };
   const valid = !Object.values(errors).some(Boolean);
@@ -197,7 +196,7 @@ function EditorForm({ existing, handle, creatorId }: { existing?: Product; handl
               <div className="flex justify-between"><dt className="text-muted">StraightFrom fee ({fmtFee(feeBps)})</dt><dd className="tabular-nums">−{money(feeFor(priceC, feeBps))}</dd></div>
               <div className="flex justify-between"><dt className="text-muted">Shipping (all yours)</dt><dd className="tabular-nums">+{money(shipC)}</dd></div>
             </dl>
-            <p className="mt-3 text-[12.5px] leading-snug text-muted">Paid to your bank 7 days after you add tracking.</p>
+            <p className="mt-3 text-[12.5px] leading-snug text-muted">Paid to your bank {days(PAYOUT_DELAY_DAYS)} after you add tracking.</p>
           </Card>
 
           <div className="flex flex-col gap-2">

@@ -11,6 +11,7 @@ import { fanActions } from "@/lib/fan-store";
 import { newOrderId, saveOrder, type PlacedOrder } from "@/lib/last-order";
 import { Icon } from "./icons";
 import { RingAvatar } from "./ring-avatar";
+import { days, SHIP_COUNTRIES_TEXT, SHIP_DEADLINE_DAYS } from "@/config";
 
 // Prototype checkout: our own page. In the real app the "Payment" block is
 // Stripe's embedded Payment Element; here it's a stand-in with no real charge.
@@ -171,7 +172,7 @@ export function CheckoutView() {
               <option value="US">United States</option>
               <option value="CA">Canada</option>
             </select>
-            <p className="mt-1.5 text-[13px] text-muted">{first} ships to the US and Canada.</p>
+            <p className="mt-1.5 text-[13px] text-muted">{first} ships to {SHIP_COUNTRIES_TEXT}.</p>
           </div>
           <div>
             <label htmlFor="line1" className={label}>Address</label>
@@ -239,7 +240,7 @@ export function CheckoutView() {
             {busy ? <span className="mx-auto">Processing…</span> : <><span>Pay {money(total)}</span><Icon name="lock" /></>}
           </button>
           <p className="text-[13px] leading-relaxed text-muted">
-            By paying you agree to the <Link href="/terms" className="underline">Terms</Link>. {first} has 7 days to ship, or you&apos;re refunded
+            By paying you agree to the <Link href="/terms" className="underline">Terms</Link>. {first} has {days(SHIP_DEADLINE_DAYS)} to ship, or you&apos;re refunded
             automatically.
           </p>
         </div>

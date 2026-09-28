@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { DEFAULT_FEE_BPS, feeFor, PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS } from "./fees";
+import { PAYOUT_DELAY_DAYS, SHIP_DEADLINE_DAYS } from "@/config";
+import { DEFAULT_FEE_BPS, feeFor } from "./fees";
 import { creators, products as allProducts } from "./mock-data";
 import type { SocialLinks } from "./social";
 import type { Product } from "./types";
@@ -10,16 +11,8 @@ import type { Product } from "./types";
 // bank status, kept in localStorage. The backend phase replaces this with
 // Supabase tables + server actions; screens keep the same shape.
 
-export const CARRIERS = [
-  { key: "canada_post", label: "Canada Post", track: (n: string) => `https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=${n}` },
-  { key: "purolator", label: "Purolator", track: (n: string) => `https://www.purolator.com/en/shipping/tracker?pin=${n}` },
-  { key: "usps", label: "USPS", track: (n: string) => `https://tools.usps.com/go/TrackConfirmAction?tLabels=${n}` },
-  { key: "ups", label: "UPS", track: (n: string) => `https://www.ups.com/track?tracknum=${n}` },
-  { key: "fedex", label: "FedEx", track: (n: string) => `https://www.fedex.com/fedextrack/?trknbr=${n}` },
-  { key: "dhl", label: "DHL", track: (n: string) => `https://www.dhl.com/en/express/tracking.html?AWB=${n}` },
-  { key: "other", label: "Other", track: null },
-] as const;
-export type CarrierKey = (typeof CARRIERS)[number]["key"];
+import type { CarrierKey } from "./carriers";
+export { CARRIERS, type CarrierKey } from "./carriers";
 
 export type OrderStatus = "paid" | "shipped" | "paid_out" | "refunded";
 

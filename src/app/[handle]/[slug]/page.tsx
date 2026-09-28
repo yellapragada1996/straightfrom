@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { TopBar } from "@/components/top-bar";
 import { getCreator, getCreatorProducts, getProduct } from "@/lib/data";
 import { firstName, isSold, money } from "@/lib/format";
-import { SHIPS_TO } from "@/lib/mock-data";
+import { days, SHIP_COUNTRIES, SHIP_DEADLINE_DAYS } from "@/config";
 
 async function load(params: PageProps<"/[handle]/[slug]">["params"]) {
   const { handle, slug } = await params;
@@ -43,7 +43,7 @@ export default async function ItemPage({ params }: PageProps<"/[handle]/[slug]">
   const how = [
     { t: `${first} ships it personally`, d: "Straight from their place to yours." },
     { t: "Tracking in your inbox", d: "As soon as it's on its way." },
-    { t: "Ships in 7 days or you're refunded", d: "Automatically. No need to ask." },
+    { t: `Ships in ${days(SHIP_DEADLINE_DAYS)} or you're refunded`, d: "Automatically. No need to ask." },
     { t: "Secure checkout by Stripe", d: "Card, Link and more. No account." },
   ];
 
@@ -65,7 +65,7 @@ export default async function ItemPage({ params }: PageProps<"/[handle]/[slug]">
               </h1>
             </div>
 
-            <BuyBox product={product} handle={creator.handle} first={first} shipsTo={SHIPS_TO.join(" & ").replace("United States", "US")} />
+            <BuyBox product={product} handle={creator.handle} first={first} shipsTo={SHIP_COUNTRIES.map((c) => (c.code === "US" ? "US" : c.name)).join(" & ")} />
 
             <section className="flex flex-col gap-2.5 border-t-[1.5px] border-ink pt-4" aria-labelledby="story-h">
               <h2 id="story-h" className="text-xs font-bold tracking-[0.09em] uppercase">The story</h2>

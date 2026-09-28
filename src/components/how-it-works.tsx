@@ -1,8 +1,10 @@
+import { days, SHIP_DEADLINE_DAYS } from "@/config";
+
 /** Trust strip on the creator page: how buying from this creator works. */
 export function HowItWorks({ first }: { first: string }) {
   const steps = [
     { t: `${first} ships it personally`, d: `Packed and sent by ${first}, with tracking emailed to you.` },
-    { t: "You're protected", d: "If it doesn't ship within 7 days, you're refunded automatically." },
+    { t: "You're protected", d: `If it doesn't ship within ${days(SHIP_DEADLINE_DAYS)}, you're refunded automatically.` },
     { t: "Secure checkout by Stripe", d: "Pay by card or Link. No account needed." },
   ];
   return (

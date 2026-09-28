@@ -14,12 +14,14 @@ import {
   useAdmin,
   type AdminOrder,
 } from "@/lib/admin-store";
-import { CARRIERS, fmtDate, type CarrierKey } from "@/lib/creator-store";
+import { CARRIERS, trackingUrl, type CarrierKey } from "@/lib/carriers";
+import { fmtDate } from "@/lib/creator-store";
 import { fmtFee } from "@/lib/fees";
 import { money } from "@/lib/format";
 import { Icon } from "../icons";
 import { Btn, Card, Field, inputCls, Tabs, useToast } from "../creator/ui";
 import { AdminTitle, ConfirmDialog, Empty, SearchBox, StatusText, Table, Thumb } from "./bits";
+import { days, PAYOUT_DELAY_DAYS, SHIP_EXTENSION_OPTIONS } from "@/config";
 
 type Filter = "all" | "to_ship" | "shipped" | "paid_out" | "refunded";
 
@@ -113,7 +115,7 @@ export function AdminOrderDetail({ id }: { id: string }) {
   const left = daysUntil(shipByAt(o));
   const address = [o.fan.name, o.fan.line1, o.fan.line2, `${o.fan.city}, ${o.fan.region} ${o.fan.postal}`, o.fan.country].filter(Boolean).join("\n");
   const carrier = CARRIERS.find((x) => x.key === o.carrier);
-  const trackUrl = carrier?.track && o.tracking ? carrier.track(o.tracking) : null;
+  const trackUrl = o.carrier && o.tracking ? trackingUrl(o.carrier, o.tracking) : null;
 
   return (
     <>
@@ -200,8 +202,9 @@ export function AdminOrderDetail({ id }: { id: string }) {
               </p>
               <p className="mt-1 text-[13px] text-muted">If it isn&apos;t shipped by then, the fan is refunded automatically.</p>
               <div className="flex flex-wrap gap-2">
-                <Btn size="sm" variant="outline" onClick={() => { adminActions.extendShipBy(o.id, 3); toast("3 more days. Creator emailed."); }}>+3 days</Btn>
-                <Btn size="sm" variant="outline" onClick={() => { adminActions.extendShipBy(o.id, 7); toast("7 more days. Creator emailed."); }}>+7 days</Btn>
+                {SHIP_EXTENSION_OPTIONS.map((n) => (
+                  <Btn key={n} size="sm" variant="outline" onClick={() => { adminActions.extendShipBy(o.id, n); toast(`${days(n)} more to ship. Let the creator know.`); }}>+{days(n)}</Btn>
+                ))}
               </div>
             </Card>
           )}
@@ -228,7 +231,7 @@ export function AdminOrderDetail({ id }: { id: string }) {
             <p className={`font-display text-2xl font-extrabold ${ps === "refunded" ? "text-muted line-through" : ""}`}>{money(o.payoutCents)}</p>
             <p className="mt-1 text-[13px] text-muted">
               {{
-                after_ship: "Paid 7 days after it ships.",
+                after_ship: `Paid ${days(PAYOUT_DELAY_DAYS)} after it ships.`,
                 waiting: `Due ${o.shippedAt ? fmtDate(new Date(payoutDueAt(o)).toISOString()) : ""}.`,
                 paying: "Goes out with today's payouts.",
                 no_bank: `Ready, but ${c?.displayName.split(" ")[0]} hasn't connected a bank yet.`,

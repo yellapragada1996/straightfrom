@@ -1,8 +1,9 @@
 import { creators } from "./mock-data";
 
-// Spec §11: handles are 3–30 chars, a-z 0-9 _, and can't collide with app routes.
+// Spec §11: handles are 3–30 chars, a-z 0-9 _, and can't collide with app routes
+// (handles.test.ts checks every top-level route in src/app is on this list).
 export const RESERVED = new Set([
-  "login", "logout", "signup", "account", "order", "orders", "dashboard", "onboarding", "checkout", "cart", "api", "admin", "settings",
+  "login", "logout", "signup", "account", "auth", "order", "orders", "dashboard", "onboarding", "checkout", "cart", "api", "admin", "settings",
   "terms", "privacy", "help", "support", "about", "blog", "static", "assets", "straightfrom",
 ]);
 
