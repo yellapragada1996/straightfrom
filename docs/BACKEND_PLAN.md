@@ -128,15 +128,15 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 | Validation | Zod | Every server action input. |
 | Errors | Sentry (free tier) | Recommended. Money code must never fail silently. |
 
-**Environment variables**
+**Environment variables** (template: `.env.example`; real values go in `.env.local`, which git ignores)
 
 ```
 NEXT_PUBLIC_SITE_URL=https://straightfrom.co
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=          # publishable key, auth only
-SUPABASE_SERVICE_ROLE_KEY=              # server only (storage signed URLs, admin auth calls)
-DATABASE_URL=                           # pooled (transaction mode), runtime
-DATABASE_URL_DIRECT=                    # direct, migrations only
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=   # sb_publishable_…, auth only
+SUPABASE_SECRET_KEY=                    # sb_secret_…, server only (storage signed URLs, admin auth calls)
+DATABASE_URL=                           # Transaction pooler (port 6543), runtime, prepare: false
+DATABASE_URL_DIRECT=                    # Session pooler (port 5432), migrations. Supabase's "direct" host is IPv6-only, which many networks can't reach
 STRIPE_SECRET_KEY=
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
 STRIPE_WEBHOOK_SECRET=                  # platform events endpoint
