@@ -232,7 +232,7 @@ report_target:   item | creator
 | column | type | notes |
 |---|---|---|
 | id | uuid pk | |
-| user_id | uuid unique | `auth.users.id` |
+| user_id | uuid unique | the Supabase `auth.users.id`. No database foreign key to Supabase's `auth` schema, so the same migrations run on the plain test Postgres (§21); the link is enforced in `server/auth.ts`. |
 | email | text | copy of the sign-in email (for admin, pending-fee matching) |
 | handle | text unique | lowercase, 3–30, `[a-z0-9_]`, not reserved (`lib/handles.ts`) |
 | display_name | text | |
@@ -909,15 +909,20 @@ export default async function Page() {
 
 Each phase ends with a working, testable slice. We present a short plan before each phase (our working rule).
 
-**Phase 0: Accounts and settings (before any code)**
-- Stripe: the setup checklist in §10. Then prove it: in test mode, create a **US** Express account, charge a test card on the platform, and transfer to that account with `source_transaction`. If this fails, stop and rethink before building.
-- Vercel **Pro** project, Supabase projects (dev + prod), Resend with the `mail.straightfrom.co` domain.
-- ✅ A test transfer from our Canadian platform lands in a US test account.
+**Phase 0: Accounts and settings**
+- ✅ Done: Supabase **dev** project `straightfrom-dev` (us-east-1; Data API off, automatic RLS on), connected through `.env.local`. Private GitHub repo `yellapragada1996/straightfrom`.
+- **Before Phase 3 (checkout):** the Stripe setup checklist in §10, then the go/no-go test. In test mode, create a **US** Express account, charge a test card on the platform, and transfer to that account with `source_transaction`. If it fails, stop and rethink before building checkout.
+- When we first deploy: Vercel **Pro**. When we first send email: Resend with `mail.straightfrom.co`. Near launch: the Supabase **prod** project (Pro plan, new credentials).
 
 **Phase 1: Foundation**
-- Supabase projects (dev + prod), Drizzle schema and migrations (§6), `config.ts`, env vars, `server/` skeleton, seed script with the prototype's sample data, Sentry.
+- **Testing and CI first** (our values, `CLAUDE.md`):
+  - Vitest (unit + integration) and Playwright (end-to-end, phone-sized);
+  - a throwaway Postgres for integration tests (local Homebrew Postgres; a service container in CI);
+  - a GitHub Actions workflow running typecheck, lint and tests on every push;
+  - branch protection so `main` only takes green pull requests.
+- Drizzle schema and migrations (§6), `config.ts`, env vars, `server/` skeleton, seed script with the prototype's sample data, Sentry.
 - Swap the hardcoded rule values in copy for config constants (§3).
-- ✅ `npm run db:migrate && npm run db:seed` gives a database that looks like the prototype.
+- ✅ `npm run db:migrate && npm run db:seed` gives a database that looks like the prototype. `npm test` and CI are green, with the first unit tests for `money.ts` and the handle rules.
 
 **Phase 2: Auth and pages**
 - Supabase Auth (Google, email + password, 6-digit codes for sign-up and password reset), `proxy.ts`, `/auth/callback`, onboarding with pending-fee claim, `requireCreator/requireAdmin`.
@@ -955,14 +960,39 @@ Each phase ends with a working, testable slice. We present a short plan before e
 
 ## 21. Testing
 
-- **Unit tests (Vitest):** `money.ts` (fees, rounding, 0% rate, multi-item shipping, payout = total − our fee − Stripe fee, missing fee → no payout), `getCreatorBalances` mapping, handle rules, `creatorNextStep`, carrier URLs.
-- **Integration tests** against a local Supabase (`supabase start`):
-  - checkout reservation race (two parallel `startCheckout` for the last unit);
-  - webhook idempotency (send the same event twice);
+Our values (`CLAUDE.md`) require every feature to ship with tests. This is how we test, and at which level.
+
+**Tools**
+- **Vitest** for unit and integration tests.
+- **Playwright** for end-to-end, in a phone-sized browser.
+- **GitHub Actions** runs typecheck, lint and all tests on every push. `main` only accepts green pull requests.
+
+**Unit tests:** fast, many.
+- `money.ts`: fees, rounding, 0% rate, multi-item shipping, payout = total − our fee − Stripe fee, missing Stripe fee → no payout.
+- The `getCreatorBalances` mapping, handle rules, `creatorNextStep`, ship-by dates across time zones, carrier URLs.
+
+**Integration tests:** every server action, webhook and job.
+- They run against a **throwaway Postgres** (local Homebrew Postgres; a service container in CI), migrated fresh for each run. **Never the dev or prod Supabase project.**
+- The signed-in user is set by a test helper at the `requireCreator()` / `requireAdmin()` boundary.
+- Stripe is replaced by a **fake** behind our thin `server/stripe/` wrapper. It records calls and can be told to fail or to crash after succeeding.
+- Must cover:
+  - the checkout hold race (two parallel `startCheckout` calls for the last unit);
+  - decline-and-retry giving one order;
+  - price changed mid-checkout;
+  - webhook idempotency (the same event twice) and a webhook that throws being retried;
   - cron re-runs;
-  - **crash tests:** throw right after each Stripe call in `refundOrder` and the payout job, then run again; assert exactly one refund/transfer in Stripe and the right final status.
-- **Stripe CLI** (`stripe listen --forward-to …`) for webhooks in dev; **test clocks** for payout/refund timing.
-- **Manual phone script** per phase, from an Instagram DM link.
+  - **crash tests:** crash right after each Stripe call in `refundOrder` and the payout job, run again, and assert exactly one refund or transfer and the right final status;
+  - authorization (a creator can never read or change another creator's data or see fan emails).
+
+**End-to-end tests:** a few critical journeys only, run against the dev server with Stripe **test mode**.
+1. A creator signs up, onboards and publishes an item.
+2. A fan buys it (test card) and gets the confirmation page.
+3. The creator adds tracking; the order shows as shipped for the fan.
+4. Admin refunds an order.
+
+**Bug fixes** start with a failing test that reproduces the bug.
+
+**Also:** the Stripe CLI (`stripe listen --forward-to …`) for webhooks in dev, and a manual phone check per phase from an Instagram DM link.
 
 ---
 
