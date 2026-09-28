@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static HTML design explorations, not part of the app.
+    "wireframes/**",
   ]),
 ]);
 

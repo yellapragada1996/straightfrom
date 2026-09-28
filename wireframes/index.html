@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StraightFrom · Design options</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ececeb; color: #111; font-family: "Geist", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 56px 24px 80px; }
+    h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.02em; }
+    .sub { margin: 8px 0 0; color: #5c5c5c; }
+    .options { margin-top: 36px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .opt { display: flex; flex-direction: column; gap: 14px; padding: 24px; border-radius: 14px; text-decoration: none; color: inherit; min-height: 260px; transition: transform .15s ease; }
+    .opt:hover { transform: translateY(-3px); }
+    .opt small { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }
+    .opt h2 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
+    .opt p { margin: 0; line-height: 1.5; opacity: .85; font-size: 15px; }
+    .opt .go { margin-top: auto; font-weight: 700; }
+    .a { background: #fff; border: 1px solid #ddd; }
+    .a .go { color: #e0201b; }
+    .b { background: #0a0a0b; color: #f2f2f0; }
+    .b .go { color: #4cff2f; }
+    .c { background: #fff; border: 1px solid #ddd; }
+    .c .go { color: #e0201b; }
+    .swatches { display: flex; gap: 6px; }
+    .swatches span { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(128,128,128,.35); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>StraightFrom · design options</h1>
+    <p class="sub">Same UX structure in each option. Only the visual direction changes.</p>
+    <div class="options">
+      <a class="opt a" href="option-a-light-red/">
+        <small>Option A · chosen</small>
+        <h2>Light + red</h2>
+        <div class="swatches"><span style="background:#fff"></span><span style="background:#0d0d0d"></span><span style="background:#e0201b"></span></div>
+        <p>White background, fan-poster type, the creator's words in italic serif, "straight<i>from</i>" wordmark, red story ring, ticker and Buy button.</p>
+        <span class="go">View option A →</span>
+      </a>
+      <a class="opt b" href="option-b-dark-green/">
+        <small>Option B</small>
+        <h2>Dark + green</h2>
+        <div class="swatches"><span style="background:#0a0a0b"></span><span style="background:#f2f2f0"></span><span style="background:#4cff2f"></span></div>
+        <p>Near-black background, a bright green logo built from straight strokes, cut corners everywhere, octagon creator frame, live pulse and stats strip.</p>
+        <span class="go">View option B →</span>
+      </a>
+      <a class="opt c" href="option-c-character/">
+        <small>Option C · A with character</small>
+        <h2>Light + red, the creator's hand</h2>
+        <div class="swatches"><span style="background:#fff"></span><span style="background:#0d0d0d"></span><span style="background:#e0201b"></span></div>
+        <p>Option A plus red handwritten notes and hand-drawn marks (underline, "just listed!", "sold!" circled, a signed story), and clearer trust with a Protected purchase box and a "how buying works" strip.</p>
+        <span class="go">View option C →</span>
+      </a>
+    </div>
+  </div>
+</body>
+</html>
