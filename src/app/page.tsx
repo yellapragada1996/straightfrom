@@ -9,6 +9,7 @@ import { ArrowDown, Underline } from "@/components/scribbles";
 import { SiteFooter } from "@/components/site-footer";
 import { Ticker } from "@/components/ticker";
 import { creators, products } from "@/lib/mock-data";
+import { SUPPORT_EMAIL } from "@/config";
 
 export const metadata: Metadata = {
   title: { absolute: "StraightFrom · Your stuff has fans." },
@@ -249,7 +250,7 @@ function Faq() {
         <div>
           <h2 id="faq-h" className={h2}>Questions</h2>
           <p className="mt-4 text-[15px] text-muted">
-            Anything else? Email <a href="mailto:hello@straightfrom.co" className="text-ink underline underline-offset-4">hello@straightfrom.co</a>
+            Anything else? Email <a href={`mailto:${SUPPORT_EMAIL}`} className="text-ink underline underline-offset-4">{SUPPORT_EMAIL}</a>
           </p>
         </div>
         <div className="border-t-[1.5px] border-ink">

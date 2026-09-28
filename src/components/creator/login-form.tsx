@@ -7,6 +7,7 @@ import { EmailPasswordAuth } from "../auth/email-password";
 import { Wordmark } from "../brand";
 import { GoogleButton, OrDivider } from "../google-button";
 import { Underline } from "../scribbles";
+import { MIN_CREATOR_AGE } from "@/config";
 
 export const PENDING_EMAIL_KEY = "sf-pending-email";
 
@@ -74,7 +75,7 @@ export function LoginForm({ mode = "signin" }: { mode?: "signup" | "signin" }) {
               <>
                 {signup && (
                   <p className="text-[12.5px] leading-relaxed text-muted">
-                    You must be 18 or older to sell on StraightFrom. By continuing you agree to the{" "}
+                    You must be {MIN_CREATOR_AGE} or older to sell on StraightFrom. By continuing you agree to the{" "}
                     <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.
                   </p>
                 )}

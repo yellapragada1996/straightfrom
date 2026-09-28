@@ -10,6 +10,7 @@ import { money } from "@/lib/format";
 import { useFeeBps } from "@/lib/platform-store";
 import { Icon } from "../icons";
 import { Btn, Card, PageTitle, StatusPill, useToast } from "./ui";
+import { days, PAYOUT_DELAY_DAYS } from "@/config";
 
 // Earnings answers three questions: how much have I made, when do I get it,
 // and is there anything I need to do?
@@ -121,7 +122,7 @@ export function EarningsView() {
             </p>
           ) : null}
           <p>
-            You&apos;re paid 7 days after you ship.{" "}
+            You&apos;re paid {days(PAYOUT_DELAY_DAYS)} after you ship.{" "}
             {feeBps === 0
               ? "You keep the full item price and all of the shipping."
               : <>StraightFrom keeps {fmtFee(feeBps)} of the item price; the shipping you charge is all yours.</>}

@@ -7,6 +7,7 @@ import { buildCart, type CartRow } from "@/lib/cart-view-model";
 import { firstName, money } from "@/lib/format";
 import { Icon } from "./icons";
 import { RingAvatar } from "./ring-avatar";
+import { days, RESERVATION_MINUTES, SHIP_DEADLINE_DAYS } from "@/config";
 
 export function CartView() {
   const { cart, ready, setQuantity, remove } = useCart();
@@ -98,7 +99,7 @@ export function CartView() {
           <Icon name="shield" className="size-6" />
           <p className="text-[13.5px] leading-relaxed text-ink-2">
             <b className="block text-[15px] text-ink">Protected purchase</b>
-            {first} has 7 days to ship, or you&apos;re refunded automatically.
+            {first} has {days(SHIP_DEADLINE_DAYS)} to ship, or you&apos;re refunded automatically.
           </p>
         </div>
       </aside>
@@ -126,7 +127,7 @@ function CartLine({ row, handle, onQty, onRemove }: { row: CartRow; handle: stri
         {state === "sold" && <p className="font-hand text-[22px] leading-none font-semibold text-accent">just sold! a fan got this one first</p>}
         {state === "on_hold" && (
           <p className="text-[13px] leading-snug text-ink-2">
-            <b>On hold.</b> Someone is checking out with this right now. If they don&apos;t finish, it&apos;s back within 30 minutes.
+            <b>On hold.</b> Someone is checking out with this right now. If they don&apos;t finish, it&apos;s back within {RESERVATION_MINUTES} minutes.
           </p>
         )}
         {state === "ok" && p.quantity > 1 && (

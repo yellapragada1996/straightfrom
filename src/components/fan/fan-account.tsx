@@ -12,6 +12,7 @@ import { GoogleButton, OrDivider } from "../google-button";
 import { Icon } from "../icons";
 import { RingAvatar } from "../ring-avatar";
 import { Underline } from "../scribbles";
+import { SHIP_DEADLINE_DAYS } from "@/config";
 
 const DAY = 86_400_000;
 
@@ -118,7 +119,7 @@ function OrdersList({ email }: { email: string }) {
 
 function OrderRow({ o }: { o: FanOrder }) {
   const first = o.creatorName.split(" ")[0];
-  const shipBy = new Date(new Date(o.placedAt).getTime() + 7 * DAY).toISOString();
+  const shipBy = new Date(new Date(o.placedAt).getTime() + SHIP_DEADLINE_DAYS * DAY).toISOString();
   const steps = ["Paid", "Shipped", "On its way"];
   const reached = o.status === "shipped" ? 2 : 0;
 

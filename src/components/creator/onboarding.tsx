@@ -15,9 +15,9 @@ import { AvatarPicker } from "./photo-uploader";
 import { cleanSocialLinks, SocialLinksEditor } from "./social-links-editor";
 import { Btn, CopyButton, Field, inputCls } from "./ui";
 import { PENDING_EMAIL_KEY } from "./login-form";
+import { BIO_MAX, MIN_CREATOR_AGE } from "@/config";
 
 const STEPS = ["Your link", "Your profile", "Your socials"] as const;
-const BIO_MAX = 160;
 
 function readPendingEmail() {
   try {
@@ -150,7 +150,7 @@ function OnboardingSteps() {
                   <label className="flex cursor-pointer items-start gap-3 text-[14px] leading-snug">
                     <input type="checkbox" checked={adult} onChange={(e) => setAdult(e.target.checked)} className="mt-0.5 size-5 accent-[#e0201b]" />
                     <span>
-                      I&apos;m 18 or older, and I agree to the <Link href="/terms" className="underline">Terms</Link>. I&apos;ll only list things I personally owned or used.
+                      I&apos;m {MIN_CREATOR_AGE} or older, and I agree to the <Link href="/terms" className="underline">Terms</Link>. I&apos;ll only list things I personally owned or used.
                     </span>
                   </label>
                 </>

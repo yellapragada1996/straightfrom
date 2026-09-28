@@ -1,6 +1,7 @@
 "use client";
 
 import { DEFAULT_FEE_BPS } from "./fees";
+export { parseFeePercent } from "./fees";
 import { createLocalStore } from "./local-store";
 
 // Platform settings the admin controls and the creator side reads.
@@ -73,13 +74,5 @@ export const platformActions = {
     store.set(seed);
   },
 };
-
-/** Percent text ("4.9") → basis points (490). null when it isn't a valid 0–100 value. */
-export function parseFeePercent(v: string): number | null {
-  const t = v.trim().replace(/%$/, "");
-  if (!/^\d{1,3}(\.\d{1,2})?$/.test(t)) return null;
-  const bps = Math.round(parseFloat(t) * 100);
-  return bps >= 0 && bps <= 10000 ? bps : null;
-}
 
 export const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());

@@ -10,6 +10,7 @@ import { FanSignIn } from "./fan/fan-account";
 import { Icon } from "./icons";
 import { RingAvatar } from "./ring-avatar";
 import { Underline } from "./scribbles";
+import { days, SHIP_DEADLINE_DAYS } from "@/config";
 
 export function OrderConfirmation() {
   // undefined while server-rendering / hydrating, then the stored order (or null).
@@ -31,9 +32,9 @@ export function OrderConfirmation() {
 
   const first = order.creatorName.split(" ")[0];
   const steps = [
-    { icon: "box" as const, t: `${first} packs and ships it`, d: "Personally, within 7 days." },
+    { icon: "box" as const, t: `${first} packs and ships it`, d: `Personally, within ${days(SHIP_DEADLINE_DAYS)}.` },
     { icon: "mail" as const, t: "You get a tracking link", d: `Emailed to ${order.email} as soon as it ships.` },
-    { icon: "refund" as const, t: "Protected", d: "If it doesn't ship within 7 days, you're refunded automatically." },
+    { icon: "refund" as const, t: "Protected", d: `If it doesn't ship within ${days(SHIP_DEADLINE_DAYS)}, you're refunded automatically.` },
   ];
 
   return (
