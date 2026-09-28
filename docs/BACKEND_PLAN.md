@@ -101,7 +101,7 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 | **+3 / +7 days** admin extensions | `admin/orders.tsx:203-204` | `SHIP_EXTENSION_OPTIONS` |
 | One ship reminder, 2 days before the deadline | spec had day 3 and 5 | `SHIP_REMINDER_DAYS_BEFORE = 2` |
 | **"ending 4821"** bank | `creator-store.ts:221` (fake) | Real last 4 from Stripe (`creators.bank_last4`) |
-| `hello@straightfrom.co` | `app/page.tsx:252` | `SUPPORT_EMAIL` |
+| `hello@straightfrom.co` | `app/page.tsx:252` | `SUPPORT_EMAIL` in `config.ts` (public, so a constant, not an env var) |
 | `admin@straightfrom.co` | `admin-shell.tsx:69,143` | `ADMIN_EMAIL` env var (secret list, never shown to visitors) |
 | Stripe card fee 2.9% + 30¢ (estimate) | `lib/fees.ts` (`stripeFeeEstimate`), admin prototype | **Deleted. Never hardcoded or estimated.** Stripe's exact fee is read from Stripe for every payment and taken from the order amount (§7). |
 | "Takes about 5 minutes" / "2 minutes" | dashboard, earnings copy | Fine to leave as copy (marketing estimates, not rules). |
@@ -109,6 +109,8 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 **Also delete (prototype-only):** every "Prototype: …" button and note, the fake Stripe dialog, "fill test details", the decline-card hint, "reset sample data", and the fake order id generator.
 
 `src/config.ts` exports plain constants, so both server and client code can import them. Secrets stay in env vars and are only read in `src/server/`.
+
+**Status (Phase 1):** all of the above now live in `src/config.ts` and the screens use them, except the ones that belong to later phases (the Stripe estimate is removed in Phase 4, the fake bank number with Connect). `MAX_PRICE_CENTS` waits for the §22 decision.
 
 ---
 
@@ -132,6 +134,7 @@ Money amounts are **not** hardcoded anywhere. Every dollar figure on screen is c
 
 ```
 NEXT_PUBLIC_SITE_URL=https://straightfrom.co
+APP_ENV=production                      # development | production; db:seed only runs in development
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=   # sb_publishable_…, auth only
 SUPABASE_SECRET_KEY=                    # sb_secret_…, server only (storage signed URLs, admin auth calls)
@@ -143,7 +146,6 @@ STRIPE_WEBHOOK_SECRET=                  # platform events endpoint
 STRIPE_CONNECT_WEBHOOK_SECRET=          # connected-account events endpoint
 RESEND_API_KEY=
 EMAIL_FROM="StraightFrom <orders@mail.straightfrom.co>"   # sending domain mail.straightfrom.co
-SUPPORT_EMAIL=hello@straightfrom.co
 ADMIN_EMAILS=you@yourdomain.com         # comma-separated; one for now
 CRON_SECRET=
 SENTRY_DSN=
@@ -161,9 +163,11 @@ src/
   proxy.ts                  # refreshes the Supabase session cookie; quick redirects for /dashboard, /admin
   server/
     db/
-      schema.ts             # Drizzle tables (§6)
-      index.ts              # db client (pooled)
-      seed.ts               # loads the prototype's sample data into a dev database
+      schema.ts             # Drizzle tables (§6); migrations generated into /drizzle
+      client.ts             # createDb(url): Drizzle + postgres driver (prepare: false for the pooler)
+      index.ts              # getDb(): the app's client, server-only
+      migrate.ts            # runMigrations(url): npm run db:migrate and the test setup
+      seed.ts               # sample data for dev (APP_ENV=development only) and tests
     auth.ts                 # getUser(), requireCreator(), requireAdmin(), getFanEmail()
     money.ts                # orderTotals(), creatorEarns(), fee maths, all integer cents (§7)
     queries/                # reads, one file per area
@@ -183,6 +187,8 @@ src/
     jobs/
       finishRefunds.ts  autoRefunds.ts  payouts.ts  shipReminder.ts  cleanupPending.ts
       sendEmails.ts  fillStripeFees.ts  privacyCleanup.ts
+  lib/
+    carriers.ts             # carriers + trackingUrl(), shared by screens, server and emails
   app/
     api/stripe/webhook/route.ts
     api/stripe/connect-webhook/route.ts
@@ -191,11 +197,15 @@ src/
     ...existing pages
 ```
 
+Tests live next to the code (`*.test.ts`, `*.test.tsx`, `*.int.test.ts`); shared test helpers in `test/`, end-to-end tests in `e2e/` (§21).
+
 `src/lib/data.ts` already routes all reads through async functions ("the backend phase replaces their bodies"). We keep those names and point them at `server/queries/`.
 
 ---
 
 ## 6. Database schema
+
+**Built in Phase 1:** `src/server/db/schema.ts`, first migration `drizzle/0000_init.sql`. Besides the columns below, the database itself enforces the money rules with check constraints: `total = items + shipping`, `payout = total − our fee − Stripe's fee` (or empty until Stripe reports its fee), fees 0–100%, no negative prices or stock, lowercase fan emails, one platform-settings row, valid handles.
 
 Postgres enums, `uuid` primary keys (`gen_random_uuid()`), `timestamptz` everywhere, `created_at`/`updated_at` on every table.
 
@@ -203,6 +213,7 @@ Postgres enums, `uuid` primary keys (`gen_random_uuid()`), `timestamptz` everywh
 
 ```
 creator_status:  active | hidden
+email_status:    queued | sent | failed
 product_status:  draft | available | sold_out
 order_status:    pending | paid | shipped | paid_out | refunding | refunded | canceled
 stripe_status:   none | pending | active | action_needed
@@ -337,7 +348,7 @@ There is **no fans table**. A fan account is a Supabase auth user with no `creat
 
 ### Indexes
 
-`creators(handle)`, `orders(status)` (for jobs), `email_outbox(status)`, `products(creator_id, status)`, `products(creator_id, slug)` unique, `orders(creator_id, status)`, `orders(lower(fan_email))`, `orders(status, paid_at)`, `orders(status, shipped_at)`, `reservations(product_id, expires_at)`, `order_events(order_id, at)`, `reports(status)`.
+`creators(handle)`, `orders(status)` (for jobs), `email_outbox(status)`, `products(creator_id, status)`, `products(creator_id, slug)` unique, `orders(creator_id, status)`, `orders(fan_email)` (stored lowercase, enforced by a check constraint), `orders(status, paid_at)`, `orders(status, shipped_at)`, `reservations(product_id, expires_at)`, `order_events(order_id, at)`, `reports(status)`.
 
 ---
 
@@ -785,7 +796,7 @@ The UI already shows success toasts. It just needs to also show `error` when `ok
 
 | Action | Rules checked on the server |
 |---|---|
-| `checkHandle(h)` | format, reserved words, taken, retired. Read-only, called while typing. |
+| `checkHandle(h)` | format, reserved words (every top-level route; `handles.test.ts` fails if a new route isn't reserved), taken, retired. Read-only, called while typing. |
 | `completeOnboarding(profile)` | handle free (again), age box ticked, name present, bio ≤ `BIO_MAX`, socials cleaned (`normalizeUsername`). Claims a pending fee. |
 | `updateProfile(patch)` | handle **cannot** change. Same limits. |
 | `createUploadUrl()` | signed in; jpeg/png/webp; ≤ 5 MB. Path is under their user id (§14). |
@@ -923,6 +934,7 @@ Each phase ends with a working, testable slice. We present a short plan before e
 - Drizzle schema and migrations (§6), `config.ts`, env vars, `server/` skeleton, seed script with the prototype's sample data, Sentry.
 - Swap the hardcoded rule values in copy for config constants (§3).
 - ✅ `npm run db:migrate && npm run db:seed` gives a database that looks like the prototype. `npm test` and CI are green, with the first unit tests for `money.ts` and the handle rules.
+- **Done:** Vitest (unit, components, integration) + Playwright (phone); CI on GitHub Actions with branch protection on `main`; all 17 tables migrated to dev with RLS; seed; `config.ts`; `server/money.ts` (`orderTotals`, `creatorPayoutCents`, `effectiveFeeBps`); `lib/carriers.ts`. Found and fixed on the way: the handle `auth` wasn't reserved, though `/auth/callback` is a planned route. Sentry moves to the first deploy.
 
 **Phase 2: Auth and pages**
 - Supabase Auth (Google, email + password, 6-digit codes for sign-up and password reset), `proxy.ts`, `/auth/callback`, onboarding with pending-fee claim, `requireCreator/requireAdmin`.
